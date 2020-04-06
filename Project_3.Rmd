@@ -1,0 +1,98 @@
+---
+title: "Project 3"
+author: "Sean Tsai, Olli Rissanen, Kit Tsang, Ying Jie Chin, Abhinav Alluri"
+date: "4/1/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# House Prices Prediction
+
+## Step 1: Importing and Cleaning Data
+
+### Importing and exploring data
+
+```{r}
+rawHouseData_Train <- read.csv("train.csv", stringsAsFactors = FALSE)
+rawHouseData_Test <- read.csv("test.csv", stringsAsFactors = FALSE)
+
+str(rawHouseData_Train)
+summary(rawHouseData_Train)
+```
+
+### Cleaning data with Boruta Screening
+
+```{r}
+# We need to use characters for our Boruta screening of features
+CharCategory <- c(names(Filter(is.character, rawHouseData_Train)), "MSSubClass")
+intCategory <- setdiff(names(rawHouseData_Train[names(rawHouseData_Train) != "Id" & names(rawHouseData_Train) != "SalePrice" ]), CharCategory)
+
+# Impute NAs by mean for int, 
+for (i in intCategory){
+  rawHouseData_Train[,i] = ifelse(is.na(rawHouseData_Train[,i]), mean(rawHouseData_Train[,i],na.rm = TRUE), rawHouseData_Train[,i] )
+  rawHouseData_Test[,i] = ifelse(is.na(rawHouseData_Test[,i]), mean(rawHouseData_Test[,i],na.rm = TRUE), rawHouseData_Test[,i] )
+}
+
+# Impute NAs by "Missing" for characters
+for(i in CharCategory){
+  rawHouseData_Train[,i] = ifelse(is.na(rawHouseData_Train[,i]), "Missing", rawHouseData_Train[,i])
+  rawHouseData_Test[,i] = ifelse(is.na(rawHouseData_Test[,i]), "Missing", rawHouseData_Test[,i])
+}
+
+
+# Boruta Train package to identify important features (https://www.datacamp.com/community/tutorials/feature-selection-R-boruta)
+library(Boruta)
+set.seed(233)
+boruta_Train <- Boruta(rawHouseData_Train[names(rawHouseData_Train) != "Id" & names(rawHouseData_Train) != "SalePrice" ], rawHouseData_Train$SalePrice ,  doTrace = 2)
+print(boruta_Train)
+plot(boruta_Train)
+
+# Select only those features that passed the boruta screening
+cleanHouseData_Train <- rawHouseData_Train[getSelectedAttributes(boruta_Train, withTentative = F)]
+
+# Convert characters back into factors
+cleanHouseData_Train[sapply(cleanHouseData_Train,is.character)] <- lapply(cleanHouseData_Train[sapply(cleanHouseData_Train,is.character)], as.factor)
+
+# Adding SalePrice back into the train data
+cleanHouseData_Train$SalePrice <- rawHouseData_Train$SalePrice
+```
+
+**COMMENTS:**
+
+**For print(boruta_Train), text "9 tentative attributes left" is printed. These attributes are later removed, but do we actually and certainly know that these attributes are not important as there are also attributes that are confirmed as important and unimportant?**
+
+**Why are we converting stuff BACK into factors in the end? Seemed that there were no factors in the data originally based on the first initial str when the data was read. Or are we now creating factors for the first time as it's necessary?** 
+
+**Added SalePrice to the cleaned train data. Does Id need to be added as well? Or should it be (kept) removed as it does not explain SalePrice for sure being basically a row number?**
+
+**As this is a competition and for the competition, we should probably not randomize the data. Thought based on the sample_submission file. Also, the train and test data were given.**
+
+### A look into the cleaned data
+
+```{r}
+str(cleanHouseData_Train)
+summary(cleanHouseData_Train)
+```
+
+## Step 2: Linear Regression
+
+### Creating a linear regression
+
+```{r}
+# Basic linear regression with no further considerations
+SalePrice_LinReg <- lm(SalePrice ~ ., data = cleanHouseData_Train)
+```
+
+
+### Summary of the regression performance
+
+```{r}
+summary(SalePrice_LinReg)
+```
+
+**Based on the first look there are quite a few insignificant attributes. Is the Boruta wiser or should we do further cleaning based on the regression results?**
+
+
