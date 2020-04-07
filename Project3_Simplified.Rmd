@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 houses <- read.csv("train.csv")
-summary(houses)
+# summary(houses)
 # str(houses)
 # dim(houses)
 
@@ -39,15 +39,26 @@ houses <- houses[!is.na(houses$BsmtExposure),]
 houses <- houses[!is.na(houses$BsmtFinType2),]
 houses <- houses[!is.na(houses$Electrical),] #only one missing observation
 
+
+```
+
+## Model - Linear Regression
+
+### Creating a linear regression
+```{r}
+# Basic linear regression with no further considerations
+SalePrice_LinReg <- lm(SalePrice ~ ., data = houses)
+summary(SalePrice_LinReg)
+```
+
+## Data cleaning for other models - KNN/ANN etc
+
+```{r}
 #converting all categorical data to numeric data
 houses[] <- data.matrix(houses)
 
-#Imputing the NAs for the rest of the variables using predicitve mean matching
-houses <- mice(houses, m=5, maxit = 50, method = 'pmm', seed = 100)
-houses <- complete(houses)
-summary(houses)
-str(houses)
 ```
+
 
 ```{r}
 #Use of Boruta for feature selection - The Boruta algorithm is a wrapper built around the random forest classification algorithm. It tries to capture all the important, interesting features you might have in your dataset with respect to an outcome variable. In this case, our outcome variable is SalePrice
@@ -92,16 +103,6 @@ plot(boruta_Train, cex.axis=.4, las=2, xlab="", main="Variable Importance")
 
 #Prediction Models - Finding the best model with highest in-sample accuracy
 
-## Model - Linear Regression
-
-### Creating a linear regression
-```{r}
-# Basic linear regression with no further considerations
-SalePrice_LinReg <- lm(SalePrice ~ ., data = houses_train)
-summary(SalePrice_LinReg)
-```
-
-# 
 
 
 # Final Prediction 
