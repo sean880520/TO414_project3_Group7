@@ -1,0 +1,182 @@
+---
+title: "Project 3_Data Cleaning"
+author: "Chin Ying Jie"
+date: "06/04/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data Cleaning
+
+```{r}
+houses <- read.csv("train.csv")
+summary(houses)
+# str(houses)
+# dim(houses)
+
+#Identifying the percentage of NAs in each column
+library(VIM)
+library(mice)
+mice_plot <- aggr(houses, col=c('navyblue','yellow'),
+                    numbers=TRUE, sortVars=TRUE,
+                    labels=names(houses), cex.axis=.4,
+                    gap=3, ylab=c("Missing data","Pattern"))
+
+#Dropping all variables with more than 15% of missing data as they might lead to incorrect and unbalanced imputation
+drop <- c("PoolQC", "MiscFeature","Alley","Fence", "FireplaceQu", "LotFrontage")
+houses <- houses[,!names(houses) %in% drop]
+
+
+#drop rows with NAs in these columns, becasue the NAs here make up less than 6% of total data, and imputation will not be as accurate as there is overwhelmingly large amount of a single type of data in that column. 
+houses <- houses[!is.na(houses$MasVnrType),]
+houses <- houses[!is.na(houses$MasVnrArea),]
+houses <- houses[!is.na(houses$GarageType),]
+houses <- houses[!is.na(houses$BsmtQual),]
+houses <- houses[!is.na(houses$BsmtExposure),]
+houses <- houses[!is.na(houses$BsmtFinType2),]
+houses <- houses[!is.na(houses$Electrical),] #only one missing observation
+
+#converting all categorical data to numeric data
+houses[] <- data.matrix(houses)
+
+#Imputing the NAs for the rest of the variables using predicitve mean matching
+houses <- mice(houses, m=5, maxit = 50, method = 'pmm', seed = 100)
+houses <- complete(houses)
+summary(houses)
+str(houses)
+```
+
+```{r}
+#Use of Boruta for feature selection - The Boruta algorithm is a wrapper built around the random forest classification algorithm. It tries to capture all the important, interesting features you might have in your dataset with respect to an outcome variable. In this case, our outcome variable is SalePrice
+
+library(Boruta)
+set.seed(233)
+
+# boruta_Train <- Boruta(houses[names(houses) != "Id" & names(houses) != "SalePrice",], houses$SalePrice,  doTrace = 2)  - not sure why need to remove ID and sales price? the exmaples I found online didn't seem to remove the outcome variable... I saw the example from https://www.machinelearningplus.com/machine-learning/feature-selection/
+
+boruta_Train <- Boruta(SalePrice~., data = houses, doTrace = 2)
+print(boruta_Train)
+
+boruta_Train <- TentativeRoughFix(boruta_Train)
+print(boruta_Train)
+
+# Select only the features that passed the boruta screening
+houses_NoSalesPrice <- houses[getSelectedAttributes(boruta_Train)]
+
+# Adding SalePrice (Outcome variable) into the train data
+houses_train <- houses[getSelectedAttributes(boruta_Train)]
+
+#normalize dataset
+normalize <- function(x) { 
+  return((x - min(x)) / (max(x) - min(x)))
+}
+
+#exclude the SalePrice from normalization
+houses_train <- as.data.frame(lapply(houses_train[,-1], normalize))
+houses_train$SalePrice <- houses$SalePrice
+```
+
+## Analysing variable importance classified by Boruta
+
+```{r}
+# Variable Importance Scores
+imps <- attStats(boruta_Train)
+imps2 = imps[imps$decision != 'Rejected', c('meanImp', 'decision')]
+head(imps2[order(-imps2$meanImp), ])  # descending sort
+# Plot variable importance
+plot(boruta_Train, cex.axis=.4, las=2, xlab="", main="Variable Importance")  
+```
+
+## Preparing final test dataset for prediction
+
+```{r}
+#cleaning test set in the same way as the training set
+houses_test <- read.csv("test.csv")
+# str(houses_test)
+# dim(houses_test)
+
+#Identifying the percentage of NAs in each column
+library(VIM)
+library(mice)
+mice_plot <- aggr(houses_test, col=c('navyblue','yellow'),
+                    numbers=TRUE, sortVars=TRUE,
+                    labels=names(houses_test), cex.axis=.4,
+                    gap=3, ylab=c("Missing data","Pattern"))
+
+#Dropping all variables with more than 15% of missing data as they might lead to incorrect and unbalanced imputation
+drop <- c("PoolQC", "MiscFeature","Alley","Fence", "FireplaceQu", "LotFrontage")
+houses_test <- houses_test[,!names(houses_test) %in% drop]
+
+
+#drop rows with NAs in these columns, becasue the NAs here make up less than 6% of total data, and imputation will not be as accurate as there is overwhelmingly large amount of a single type of data in that column. 
+houses_test <- houses_test[!is.na(houses_test$MasVnrType),]
+houses_test <- houses_test[!is.na(houses_test$MasVnrArea),]
+houses_test <- houses_test[!is.na(houses_test$GarageType),]
+houses_test <- houses_test[!is.na(houses_test$BsmtQual),]
+houses_test <- houses_test[!is.na(houses_test$BsmtExposure),]
+houses_test <- houses_test[!is.na(houses_test$BsmtFinType2),]
+houses_test <- houses_test[!is.na(houses_test$Electrical),] #only one missing observation
+
+#converting all categorical data to numeric data
+houses_test[] <- data.matrix(houses_test)
+
+#Imputing the NAs for the rest of the variables using predicitve mean matching
+houses_test <- mice(houses_test, m=5, maxit = 50, method = 'pmm', seed = 100)
+houses_test <- complete(houses_test)
+write.csv(houses_test, "CleanedImputed_Test.csv") #took a while to run this imputation code, so I created a new file so that there's no need to run this code again unless necessary
+
+# Select only the features that passed the boruta screening
+cleaned_test <- read.csv("CleanedImputed_Test.csv")
+houses_test <- cleaned_test[getSelectedAttributes(boruta_Train)]
+
+#normalize dataset
+normalize <- function(x) { 
+  return((x - min(x)) / (max(x) - min(x)))
+}
+
+#no need exclude the SalePrice from normalization as there is no SalePrice column in the test set
+houses_test <- as.data.frame(lapply(houses_test, normalize))
+```
+
+#Prediction Models - Finding the best model with highest in-sample accuracy
+
+## Model - Linear Regression
+
+### Creating a linear regression
+```{r}
+# Basic linear regression with no further considerations
+SalePrice_LinReg <- lm(SalePrice ~ ., data = houses_train)
+summary(SalePrice_LinReg)
+```
+
+
+## Model - ANN
+
+# Preparing the in-sample train and test datasets
+
+**model doesn't work - not sure why for now**
+```{r}
+#Step 1: Randomise the data
+set.seed(65)
+houses_random <- houses_train[sample(nrow(houses_train)), ]
+
+train_insample_ANN <- houses_random[1:1000,]
+test_insample_ANN <- houses_random[1001:1338,]
+
+library(neuralnet)
+houses_model <- neuralnet(formula = SalePrice ~. , data = train_insample_ANN, hidden=2,  linear.output=T, stepmax = 1000000)
+
+# obtain model results
+model_results <- compute(houses_model, test_insample_ANN[,!names(houses_random)=="SalePrice"])
+# obtain predicted strength values
+predicted_saleprice <- model_results$net.result
+summary(predicted_saleprice)
+# examine the correlation between predicted and actual values
+cor(predicted_saleprice, test_insample_ANN$SalePrice)
+```
+
+
+# Final Prediction 
