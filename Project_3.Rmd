@@ -91,6 +91,7 @@ SalePrice_LinReg <- lm(SalePrice ~ ., data = cleanHouseData_Train)
 
 ```{r}
 summary(SalePrice_LinReg)
+##comment
 ```
 
 **Based on the first look there are quite a few insignificant attributes. Is the Boruta wiser or should we do further cleaning based on the regression results?**
