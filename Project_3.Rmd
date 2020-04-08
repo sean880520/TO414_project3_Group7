@@ -28,20 +28,30 @@ summary(rawHouseData_Train)
 ```{r}
 # We need to use characters for our Boruta screening of features
 CharCategory <- c(names(Filter(is.character, rawHouseData_Train)), "MSSubClass")
-intCategory <- setdiff(names(rawHouseData_Train[names(rawHouseData_Train) != "Id" & names(rawHouseData_Train) != "SalePrice" ]), CharCategory)
 
-# Impute NAs by mean for int, 
-for (i in intCategory){
-  rawHouseData_Train[,i] = ifelse(is.na(rawHouseData_Train[,i]), mean(rawHouseData_Train[,i],na.rm = TRUE), rawHouseData_Train[,i] )
-  rawHouseData_Test[,i] = ifelse(is.na(rawHouseData_Test[,i]), mean(rawHouseData_Test[,i],na.rm = TRUE), rawHouseData_Test[,i] )
-}
+#Identifying the percentage of NAs in each column
+library(VIM)
+library(mice)
+mice_plot <- aggr(rawHouseData_Train, col=c('navyblue','yellow'),
+                    numbers=TRUE, sortVars=TRUE,
+                    labels=names(rawHouseData_Train), cex.axis=.4,
+                    gap=3, ylab=c("Missing data","Pattern"))
 
-# Impute NAs by "Missing" for characters
+#taking care of NAs according to context
+rawHouseData_Train <- rawHouseData_Train[!is.na(rawHouseData_Train$Electrical),] #dropped na;only 1 missing observation
+rawHouseData_Train <- rawHouseData_Train[,!names(rawHouseData_Train)=="GarageYrBlt"] #drop GarageYrBlt column;we have many other garage variables, and imputation of year = 0 might affect the regression
+rawHouseData_Train[is.na(rawHouseData_Train$MasVnrArea),] = 0 #NAs here mean that there is no Masonry veneer so area = 0
+
+# Impute NAs by "Missing" for characters for the rest of the columns (i.e. PoolQC,MiscFeature,Alley etc) where NA = none
 for(i in CharCategory){
   rawHouseData_Train[,i] = ifelse(is.na(rawHouseData_Train[,i]), "Missing", rawHouseData_Train[,i])
   rawHouseData_Test[,i] = ifelse(is.na(rawHouseData_Test[,i]), "Missing", rawHouseData_Test[,i])
 }
 
+
+#Imputing the NAs for Lot Frontage using predictive mean matching. 
+rawHouseData_Train <- mice(rawHouseData_Train, m=5, maxit = 50, method = 'pmm', seed = 100)
+rawHouseData_Train <- complete(rawHouseData_Train)
 
 # Boruta Train package to identify important features (https://www.datacamp.com/community/tutorials/feature-selection-R-boruta)
 library(Boruta)
