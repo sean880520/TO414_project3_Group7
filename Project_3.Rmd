@@ -105,4 +105,51 @@ summary(SalePrice_LinReg)
 
 **Based on the first look there are quite a few insignificant attributes. Is the Boruta wiser or should we do further cleaning based on the regression results?**
 
+## SVM Model
+
+**Based on the linear regression model, significant factors include MSZoning, LotArea, LotShape, LandContour, LandSlope, Neighborhood, BldgType, OverallQual, OverallCond, Exterior1st, Exterior2nd, ExterQual, BsmtQual, BsmtExposure, BsmtFinType1, BsmtFullBath, FullBath, KitchenQual, TotRmsAbvGrd, Functional**
+
+```{r}
+str(cleanHouseData_Train)
+# Divide into training and test data
+svm_train <- cleanHouseData_Train[1:1020, ]
+svm_test  <- cleanHouseData_Train[1021:1459, ]
+
+# Training a SVM model (kernal "rbfdot" produces the lowerst rmse after trials)
+library(kernlab)
+model_svm1 <- ksvm(SalePrice ~ ., data = svm_train,
+                          kernel = "rbfdot")
+
+# Basic information about the model
+model_svm1
+
+# Prediction on testing data
+prediction_svm1 <- predict(model_svm1, svm_test)
+
+# RMSE Calculation
+se = 0
+for (i in 1:nrow(prediction_svm1)) {
+  se = se + (prediction_svm1[i,1]-svm_test$SalePrice[i])^2
+}
+rmse_1 = (se/nrow(prediction_svm1))^0.5
+rmse_1
+
+# SVM model 2 (build the model by using the significant factors shown in the regression model) 
+
+model_svm2 <- ksvm(SalePrice ~ MSZoning+ LotArea+ LotShape+ LandContour+ LandSlope+ Neighborhood+ BldgType+ OverallQual+ OverallCond+ Exterior1st+ Exterior2nd+ ExterQual+ BsmtQual+ BsmtExposure+ BsmtFinType1+ BsmtFullBath+ FullBath+ KitchenQual+ TotRmsAbvGrd+ Functional, data = svm_train, kernel = "rbfdot")
+
+# Basic information about the model
+model_svm2
+
+# Prediction on testing data
+prediction_svm2 <- predict(model_svm2, svm_test)
+
+# RMSE Calculation
+se = 0
+for (i in 1:nrow(prediction_svm2)) {
+  se = se + (prediction_svm2[i,1]-svm_test$SalePrice[i])^2
+}
+rmse_2 = (se/nrow(prediction_svm1))^0.5
+rmse_2
+```
 
