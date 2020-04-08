@@ -53,7 +53,6 @@ for(i in CharCategory){
 rawHouseData_Train <- mice(rawHouseData_Train, m=5, maxit = 50, method = 'pmm', seed = 100)
 rawHouseData_Train <- complete(rawHouseData_Train)
 
-summary(rawHouseData_Train)
 # Boruta Train package to identify important features (https://www.datacamp.com/community/tutorials/feature-selection-R-boruta)
 library(Boruta)
 set.seed(233)
