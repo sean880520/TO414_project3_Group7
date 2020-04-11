@@ -61,7 +61,7 @@ print(boruta_Train)
 plot(boruta_Train)
 
 # Select only those features that passed the boruta screening
-cleanHouseData_Train <- rawHouseData_Train[getSelectedAttributes(boruta_Train, withTentative = F)]
+cleanHouseData_Train <- rawHouseData_Train[getSelectedAttributes(boruta_Train,withTentative = F)]
 
 # Convert characters back into factors
 cleanHouseData_Train[sapply(cleanHouseData_Train,is.character)] <- lapply(cleanHouseData_Train[sapply(cleanHouseData_Train,is.character)], as.factor)
@@ -93,16 +93,36 @@ summary(cleanHouseData_Train)
 
 ```{r}
 # Basic linear regression with no further considerations
-SalePrice_LinReg <- lm(SalePrice ~ ., data = cleanHouseData_Train)
+SalePrice_LinReg = lm(SalePrice ~ ., data = cleanHouseData_Train)
+SalePrice_StepReg = step(SalePrice_LinReg, direction = "both")
 ```
 
 
 ### Summary of the regression performance
 
 ```{r}
-summary(SalePrice_LinReg)
+summary(SalePrice_StepReg)
 ```
 
 **Based on the first look there are quite a few insignificant attributes. Is the Boruta wiser or should we do further cleaning based on the regression results?**
 
+# Random Forest Regression
+```{r}
+set.seed(300)
+rfHouseData = cleanHouseData_Train
+trainId = sample(1:nrow(rfHouseData),0.8*nrow(rfHouseData))
+testId = setdiff(1:nrow(rfHouseData), trainId)
+rfHouseDataTrain = rfHouseData[trainId,]
+rfHouseDataTest = rfHouseData[testId,]
+
+
+library(caret)
+library(randomForest)
+
+rfModel1 = randomForest(SalePrice ~., data = rfHouseDataTrain)
+rfModel1
+plot(rfModel1)
+prediction1 = predict(rfModel1, rfHouseDataTest, type = "response")
+pre1 = data.frame(prediction1,rfHouseDataTest$SalePrice)
+```
 
