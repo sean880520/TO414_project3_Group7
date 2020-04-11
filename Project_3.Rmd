@@ -23,6 +23,8 @@ str(rawHouseData_Train)
 summary(rawHouseData_Train)
 ```
 
+Since the test set in this case only has the predictor variable
+
 ### Cleaning data with Boruta Screening
 
 ```{r}
@@ -37,7 +39,7 @@ mice_plot <- aggr(rawHouseData_Train, col=c('navyblue','yellow'),
                     labels=names(rawHouseData_Train), cex.axis=.4,
                     gap=3, ylab=c("Missing data","Pattern"))
 
-#taking care of NAs according to context
+#taking care of NAs for TRAIN set according to context
 rawHouseData_Train <- rawHouseData_Train[!is.na(rawHouseData_Train$Electrical),] #dropped na;only 1 missing observation
 rawHouseData_Train <- rawHouseData_Train[,!names(rawHouseData_Train)=="GarageYrBlt"] #drop GarageYrBlt column;we have many other garage variables, and imputation of year = 0 might affect the regression
 rawHouseData_Train[is.na(rawHouseData_Train$MasVnrArea),] = 0 #NAs here mean that there is no Masonry veneer so area = 0
@@ -68,6 +70,7 @@ cleanHouseData_Train[sapply(cleanHouseData_Train,is.character)] <- lapply(cleanH
 
 # Adding SalePrice back into the train data
 cleanHouseData_Train$SalePrice <- rawHouseData_Train$SalePrice
+
 ```
 
 **COMMENTS:**
@@ -94,15 +97,76 @@ summary(cleanHouseData_Train)
 ```{r}
 # Basic linear regression with no further considerations
 SalePrice_LinReg <- lm(SalePrice ~ ., data = cleanHouseData_Train)
+library(MASS)
+step_LinReg <- stepAIC(SalePrice_LinReg, direction = "both", 
+                      trace = FALSE)
 ```
-
 
 ### Summary of the regression performance
 
 ```{r}
 summary(SalePrice_LinReg)
+summary(step_LinReg)
 ```
 
 **Based on the first look there are quite a few insignificant attributes. Is the Boruta wiser or should we do further cleaning based on the regression results?**
 
 
+## Artificial Neural Networks
+
+### Creating an ANN
+
+```{r}
+#data cleaning for ANN
+
+#converting categorical data to numeric data
+cleanHouseData_Train[] <- data.matrix(cleanHouseData_Train)
+summary(cleanHouseData_Train)
+
+#normalize dataset
+normalize <- function(x) { 
+  return((x - min(x)) / (max(x) - min(x)))
+}
+
+#exclude SalePrice from normalization as we want to predict SalePrice
+annHouseData <- as.data.frame(lapply(cleanHouseData_Train[,!names(cleanHouseData_Train) == "SalePrice"], normalize))
+summary(annHouseData)
+
+#Include the SalePrice variable back into the dataset
+annHouseData$SalePrice <- cleanHouseData_Train$SalePrice
+
+set.seed(300)
+train_id <- sample(1:nrow(annHouseData), 0.8*nrow(annHouseData))
+test_id <- setdiff(1:nrow(annHouseData),train_id)
+annHouseDataTrain <- annHouseData[train_id,]
+annHouseDataTest <- annHouseData[test_id,]
+
+# used only variables which had ** or *** in terms of significance level from the original lm model. When I used ony variables with *** significance level, the accuracy was 0.8568247. When I used only variables with *, ** and ***, the accuracy was at 0.8646189. The best accuracy of 0.8807884 was obtained when I used variables with only ** and ***
+
+library(nnet)
+ann_model <- nnet(SalePrice ~ MSSubClass + LotArea + LandContour + OverallQual + OverallCond + MasVnrType
++ MasVnrArea + ExterQual + BsmtQual + BsmtExposure + BsmtFullBath + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + SaleCondition,
+    data=annHouseDataTrain,
+    size=10, linout=TRUE, skip=TRUE, MaxNWts=10000, trace=FALSE, maxit=100)
+
+predicted_saleprice <- predict(ann_model, newdata=annHouseDataTest[,!names(annHouseDataTest)=="SalePrice"])
+cor(predicted_saleprice, annHouseDataTest$SalePrice)
+
+#import function to plot neural network from Github found from this link: https://beckmw.wordpress.com/2013/03/04/visualizing-neural-networks-from-the-nnet-package/
+
+require(RCurl)
+root.url<-'https://gist.githubusercontent.com/fawda123'
+raw.fun<-paste(
+  root.url,
+  '5086859/raw/cc1544804d5027d82b70e74b83b3941cd2184354/nnet_plot_fun.r',
+  sep='/'
+  )
+script<-getURL(raw.fun, ssl.verifypeer = FALSE)
+eval(parse(text = script))
+rm('script','raw.fun')
+
+#Plotting the neural network
+par(mar=numeric(4),family='serif')
+plot(ann_model,nid=F, circle.cex=2,cex=0.8)
+
+```
