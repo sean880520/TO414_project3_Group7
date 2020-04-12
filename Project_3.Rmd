@@ -111,12 +111,12 @@ summary(SalePrice_LinReg)
 
 ```{r}
 # Randomize data
-set.seed(27)
+set.seed(300)
 svm <- cleanHouseData_Train[sample(nrow(cleanHouseData_Train)),]
 
 # Divide into training and test data
-svm_train <- svm[1:1020, ]
-svm_test  <- svm[1021:1459, ]
+svm_train <- svm[1:1167, ]
+svm_test  <- svm[1168:1459, ]
 
 # Training a SVM model (kernal "vanilladot" produces the lowerst rmse after trials)
 library(kernlab)
@@ -152,7 +152,30 @@ se = 0
 for (i in 1:nrow(prediction_svm2)) {
   se = se + (prediction_svm2[i,1]-svm_test$SalePrice[i])^2 
 }
-rmse_2 = (se/nrow(prediction_svm1))^0.5
+rmse_2 = (se/nrow(prediction_svm2))^0.5
 rmse_2
+
+# SVM model 3 (using the significant factors shown in the stepwise regression model)
+model_svm3 <- ksvm(SalePrice ~ MSZoning + LotArea + LotShape + LandContour + 
+    LandSlope + Neighborhood + Condition1 + BldgType + HouseStyle + 
+    OverallQual + OverallCond + YearBuilt + Exterior1st + MasVnrArea + 
+    ExterQual + BsmtQual + BsmtExposure + BsmtFinType1 + X2ndFlrSF + 
+    GrLivArea + BsmtFullBath + FullBath + BedroomAbvGr + KitchenAbvGr + 
+    KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + 
+    GarageQual + GarageCond + WoodDeckSF + SaleCondition, data = svm_train, kernel = "vanilladot")
+
+# Basic information about the model
+model_svm3
+
+# Prediction on testing data
+prediction_svm3 <- predict(model_svm3, svm_test)
+
+# RMSE Calculation
+se = 0
+for (i in 1:nrow(prediction_svm3)) {
+  se = se + (prediction_svm3[i,1]-svm_test$SalePrice[i])^2 
+}
+rmse_3 = (se/nrow(prediction_svm3))^0.5
+rmse_3
 ```
 
