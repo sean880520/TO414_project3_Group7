@@ -96,4 +96,45 @@ summary(SalePrice_LinReg)
 
 **Based on the first look there are quite a few insignificant attributes. Is the Boruta wiser or should we do further cleaning based on the regression results?**
 
+### KNN
+
+```{r}
+
+cleanHouseData_random <- cleanHouseData_Train[sample(nrow(cleanHouseData_Train)),]
+cleanHouseData_rand <- as.data.frame(model.matrix(~ . -1, data=cleanHouseData_random))
+
+normalize <- function(x) { 
+  return((x - min(x)) / (max(x) - min(x)))
+}
+cleanHouseData_norm <- as.data.frame(lapply(cleanHouseData_rand, normalize))
+
+str(cleanHouseData_norm)
+
+
+data("cleanHouseData_norm")
+data <- cleanHouseData_norm
+str(data)
+
+set.seed(1234)
+ind <- sample(2, nrow(data), replace = T, prob = c(.7,.3))
+training <- data[ind == 1,]
+test <- data[ind == 2,]
+
+trControl <- trainControl(method = 'repeatedcv',
+                          number = 10,
+                          repeats = 3)
+
+set.seed(333)
+fit <- train(SalePrice ~.,
+             data = training,
+             tuneGrid = expand.grid(k=1:70),
+             method = 'knn',
+             trControl = trControl,
+             preProc = c('center', 'scale'))
+
+fit
+
+
+```
+
 
