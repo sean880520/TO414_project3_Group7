@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # House Prices Prediction
 
-## Step 1: Importing and Cleaning Data
+## General Data Exploration
 
 ### Importing and exploring data
 
@@ -23,8 +23,7 @@ str(rawHouseData_Train)
 summary(rawHouseData_Train)
 ```
 
-### Cleaning data with Boruta Screening
-
+### Cleaning data
 ```{r}
 # We need to use characters for our Boruta screening of features
 CharCategory <- c(names(Filter(is.character, rawHouseData_Train)), "MSSubClass")
@@ -48,11 +47,13 @@ for(i in CharCategory){
   rawHouseData_Test[,i] = ifelse(is.na(rawHouseData_Test[,i]), "Missing", rawHouseData_Test[,i])
 }
 
-
 #Imputing the NAs for Lot Frontage using predictive mean matching. 
 rawHouseData_Train <- mice(rawHouseData_Train, m=5, maxit = 50, method = 'pmm', seed = 100)
 rawHouseData_Train <- complete(rawHouseData_Train)
+```
 
+### Boruta Training
+```{r}
 # Boruta Train package to identify important features (https://www.datacamp.com/community/tutorials/feature-selection-R-boruta)
 library(Boruta)
 set.seed(233)
@@ -61,7 +62,7 @@ print(boruta_Train)
 plot(boruta_Train)
 
 # Select only those features that passed the boruta screening
-cleanHouseData_Train <- rawHouseData_Train[getSelectedAttributes(boruta_Train, withTentative = F)]
+cleanHouseData_Train <- rawHouseData_Train[getSelectedAttributes(boruta_Train,withTentative = F)]
 
 # Convert characters back into factors
 cleanHouseData_Train[sapply(cleanHouseData_Train,is.character)] <- lapply(cleanHouseData_Train[sapply(cleanHouseData_Train,is.character)], as.factor)
@@ -70,39 +71,205 @@ cleanHouseData_Train[sapply(cleanHouseData_Train,is.character)] <- lapply(cleanH
 cleanHouseData_Train$SalePrice <- rawHouseData_Train$SalePrice
 ```
 
-**COMMENTS:**
 
-**For print(boruta_Train), text "9 tentative attributes left" is printed. These attributes are later removed, but do we actually and certainly know that these attributes are not important as there are also attributes that are confirmed as important and unimportant?**
-
-**Why are we converting stuff BACK into factors in the end? Seemed that there were no factors in the data originally based on the first initial str when the data was read. Or are we now creating factors for the first time as it's necessary?** 
-
-**Added SalePrice to the cleaned train data. Does Id need to be added as well? Or should it be (kept) removed as it does not explain SalePrice for sure being basically a row number?**
-
-**As this is a competition and for the competition, we should probably not randomize the data. Thought based on the sample_submission file. Also, the train and test data were given.**
-
-### A look into the cleaned data
-
+A Look into the cleaned data
 ```{r}
 str(cleanHouseData_Train)
 summary(cleanHouseData_Train)
 ```
 
-## Step 2: Linear Regression
+### Creating a linear regression to explore the data
 
-### Creating a linear regression
+Finding out the significance of the factors
+- Linear Regression
+- Stepwise Regression
 
 ```{r}
 # Basic linear regression with no further considerations
-SalePrice_LinReg <- lm(SalePrice ~ ., data = cleanHouseData_Train)
+SalePrice_LinReg = lm(SalePrice ~ ., data = cleanHouseData_Train)
+library(MASS)
+SalePrice_StepReg = stepAIC(SalePrice_LinReg, direction = "both")
 ```
 
-
-### Summary of the regression performance
-
+Summary of the regression performance
 ```{r}
-summary(SalePrice_LinReg)
+summary(SalePrice_StepReg)
 ```
 
-**Based on the first look there are quite a few insignificant attributes. Is the Boruta wiser or should we do further cleaning based on the regression results?**
+## Models
+
+### Random Forest Regression
+
+Importing the required library
+```{r}
+library(caret)
+library(randomForest)
+```
+
+Performing a Train/Test Split
+```{r}
+set.seed(300)
+rfHouseData = cleanHouseData_Train
+trainId = sample(1:nrow(rfHouseData),0.8*nrow(rfHouseData))
+testId = setdiff(1:nrow(rfHouseData), trainId)
+rfHouseDataTrain = rfHouseData[trainId,]
+rfHouseDataTest = rfHouseData[testId,]
+```
+
+Contruct the model
+```{r}
+rfModel1 = randomForest(SalePrice ~., data = rfHouseDataTrain)
+rfModel1
+plot(rfModel1)
+```
+
+Predict the result on the test set
+```{r}
+prediction1 = predict(rfModel1, rfHouseDataTest, type = "response")
+pre1 = data.frame(prediction1,rfHouseDataTest$SalePrice)
+cor(prediction1,rfHouseDataTest$SalePrice)
+```
+
+- Description of results of random forest
+
+
+## ANN Model
+
+### Creating an ANN
+```{r}
+#data cleaning for ANN
+#converting categorical data to numeric data
+cleanHouseData_Train[] <- data.matrix(cleanHouseData_Train)
+summary(cleanHouseData_Train)
+
+#normalize dataset
+normalize <- function(x) { 
+  return((x - min(x)) / (max(x) - min(x)))
+}
+#exclude SalePrice from normalization as we want to predict SalePrice
+annHouseData <- as.data.frame(lapply(cleanHouseData_Train[,!names(cleanHouseData_Train) == "SalePrice"], normalize))
+summary(annHouseData)
+
+#Include the SalePrice variable back into the dataset
+annHouseData$SalePrice <- cleanHouseData_Train$SalePrice
+set.seed(300)
+train_id <- sample(1:nrow(annHouseData), 0.8*nrow(annHouseData))
+test_id <- setdiff(1:nrow(annHouseData),train_id)
+annHouseDataTrain <- annHouseData[train_id,]
+annHouseDataTest <- annHouseData[test_id,]
+
+# used only variables which had ** or *** in terms of significance level from the original lm model. When I used only variables with *** significance level, the accuracy was 0.8568247. When I used only variables with *, ** and ***, the accuracy was at 0.8646189. The best accuracy of 0.8807884 was obtained when I used variables with only ** and ***
+library(nnet)
+ann_model <- nnet(SalePrice ~ MSSubClass + LotArea + LandContour + OverallQual + OverallCond + MasVnrType
++ MasVnrArea + ExterQual + BsmtQual + BsmtExposure + BsmtFullBath + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + SaleCondition,
+    data=annHouseDataTrain,
+    size=10, linout=TRUE, skip=TRUE, MaxNWts=10000, trace=FALSE, maxit=100)
+predicted_saleprice <- predict(ann_model, newdata=annHouseDataTest[,!names(annHouseDataTest)=="SalePrice"])
+cor(predicted_saleprice, annHouseDataTest$SalePrice)
+
+#import function to plot neural network from Github found from this link: https://beckmw.wordpress.com/2013/03/04/visualizing-neural-networks-from-the-nnet-package/
+require(RCurl)
+root.url<-'https://gist.githubusercontent.com/fawda123'
+raw.fun<-paste(root.url,'5086859/raw/cc1544804d5027d82b70e74b83b3941cd2184354/nnet_plot_fun.r',sep='/')
+
+script<-getURL(raw.fun, ssl.verifypeer = FALSE)
+eval(parse(text = script))
+rm('script','raw.fun')
+#Plotting the neural network
+par(mar=numeric(4),family='serif')
+plot(ann_model,nid=F, circle.cex=2,cex=0.8)
+```
+
+## Support Vector Machine
+```{r}
+# Randomize data
+set.seed(300)
+svm <- cleanHouseData_Train[sample(nrow(cleanHouseData_Train)),]
+
+# Divide into training and test data
+svm_train <- svm[1:1167, ]
+svm_test  <- svm[1168:1459, ]
+
+# Training a SVM model (kernal "vanilladot" produces the lowerst rmse after trials)
+library(kernlab)
+model_svm1 <- ksvm(SalePrice ~ ., data = svm_train,
+                          kernel = "vanilladot")
+
+# Basic information about the model
+model_svm1
+# Prediction on testing data
+prediction_svm1 <- predict(model_svm1, svm_test)
+
+# RMSE Calculation
+se = 0
+for (i in 1:nrow(prediction_svm1)) {
+  se = se + (prediction_svm1[i,1]-svm_test$SalePrice[i])^2
+}
+rmse_1 = (se/nrow(prediction_svm1))^0.5
+rmse_1
+
+# SVM model 2 (build the model by using the significant factors shown in the regression model) 
+model_svm2 <- ksvm(SalePrice ~ MSZoning+ LotArea+ LotShape+ LandContour+ LandSlope+ Neighborhood+ BldgType+ OverallQual+ OverallCond+ Exterior1st+ Exterior2nd+ ExterQual+ BsmtQual+ BsmtExposure+ BsmtFinType1+ BsmtFullBath+ FullBath+ KitchenQual+ TotRmsAbvGrd+ Functional, data = svm_train, kernel = "vanilladot")
+# Basic information about the model
+model_svm2
+# Prediction on testing data
+prediction_svm2 <- predict(model_svm2, svm_test)
+# RMSE Calculation
+se = 0
+for (i in 1:nrow(prediction_svm2)) {
+  se = se + (prediction_svm2[i,1]-svm_test$SalePrice[i])^2 
+}
+rmse_2 = (se/nrow(prediction_svm2))^0.5
+rmse_2
+
+# SVM model 3 (using the significant factors shown in the stepwise regression model)
+model_svm3 <- ksvm(SalePrice ~ MSZoning + LotArea + LotShape + LandContour + 
+    LandSlope + Neighborhood + Condition1 + BldgType + HouseStyle + 
+    OverallQual + OverallCond + YearBuilt + Exterior1st + MasVnrArea + 
+    ExterQual + BsmtQual + BsmtExposure + BsmtFinType1 + X2ndFlrSF + 
+    GrLivArea + BsmtFullBath + FullBath + BedroomAbvGr + KitchenAbvGr + 
+    KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + 
+    GarageQual + GarageCond + WoodDeckSF + SaleCondition, data = svm_train, kernel = "vanilladot")
+# Basic information about the model
+model_svm3
+# Prediction on testing data
+prediction_svm3 <- predict(model_svm3, svm_test)
+# RMSE Calculation
+se = 0
+for (i in 1:nrow(prediction_svm3)) {
+  se = se + (prediction_svm3[i,1]-svm_test$SalePrice[i])^2 
+}
+rmse_3 = (se/nrow(prediction_svm3))^0.5
+rmse_3
+```
+
+## KNN
+```{r}
+cleanHouseData_random <- cleanHouseData_Train[sample(nrow(cleanHouseData_Train)),]
+cleanHouseData_rand <- as.data.frame(model.matrix(~ . -1, data=cleanHouseData_random))
+normalize <- function(x) { 
+  return((x - min(x)) / (max(x) - min(x)))
+}
+cleanHouseData_norm <- as.data.frame(lapply(cleanHouseData_rand, normalize))
+str(cleanHouseData_norm)
+data("cleanHouseData_norm")
+data <- cleanHouseData_norm
+str(data)
+set.seed(1234)
+ind <- sample(2, nrow(data), replace = T, prob = c(.7,.3))
+training <- data[ind == 1,]
+test <- data[ind == 2,]
+trControl <- trainControl(method = 'repeatedcv',
+                          number = 10,
+                          repeats = 3)
+set.seed(333)
+fit <- train(SalePrice ~.,
+             data = training,
+             tuneGrid = expand.grid(k=1:70),
+             method = 'knn',
+             trControl = trControl,
+             preProc = c('center', 'scale'))
+fit
+```
 
 
