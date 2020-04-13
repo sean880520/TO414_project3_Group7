@@ -133,6 +133,11 @@ fit <- train(SalePrice ~.,
              preProc = c('center', 'scale'))
 
 fit
+plot(fit)
+varImp(fit)
+pred <- predict(fit, newdata = test)
+RMSE(pred, test$SalePrice)
+plot(pred ~ test$SalePrice)
 
 
 ```
