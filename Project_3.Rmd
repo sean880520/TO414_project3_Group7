@@ -181,48 +181,29 @@ plot(ann_model,nid=F, circle.cex=2,cex=0.8)
 ```
 
 ## Support Vector Machine
+Importing the required library
 ```{r}
-# Randomize data
+library(kernlab)
+```
+
+Randomize the data
+```{r}
 set.seed(300)
 svm <- cleanHouseData_Train[sample(nrow(cleanHouseData_Train)),]
+```
 
-# Divide into training and test data
+Performing a Train/Test Split
+```{r}
 svm_train <- svm[1:1167, ]
 svm_test  <- svm[1168:1459, ]
+```
 
-# Training a SVM model (kernal "vanilladot" produces the lowerst rmse after trials)
-library(kernlab)
+Contruct the model
+3 different Models are used. The first model includes all the variables of the dataset. The second model includes all the significant factors of the linear regression. The third model includes all the significant factors of the stepwise regression.
+```{r}
 model_svm1 <- ksvm(SalePrice ~ ., data = svm_train,
                           kernel = "vanilladot")
-
-# Basic information about the model
-model_svm1
-# Prediction on testing data
-prediction_svm1 <- predict(model_svm1, svm_test)
-
-# RMSE Calculation
-se = 0
-for (i in 1:nrow(prediction_svm1)) {
-  se = se + (prediction_svm1[i,1]-svm_test$SalePrice[i])^2
-}
-rmse_1 = (se/nrow(prediction_svm1))^0.5
-rmse_1
-
-# SVM model 2 (build the model by using the significant factors shown in the regression model) 
 model_svm2 <- ksvm(SalePrice ~ MSZoning+ LotArea+ LotShape+ LandContour+ LandSlope+ Neighborhood+ BldgType+ OverallQual+ OverallCond+ Exterior1st+ Exterior2nd+ ExterQual+ BsmtQual+ BsmtExposure+ BsmtFinType1+ BsmtFullBath+ FullBath+ KitchenQual+ TotRmsAbvGrd+ Functional, data = svm_train, kernel = "vanilladot")
-# Basic information about the model
-model_svm2
-# Prediction on testing data
-prediction_svm2 <- predict(model_svm2, svm_test)
-# RMSE Calculation
-se = 0
-for (i in 1:nrow(prediction_svm2)) {
-  se = se + (prediction_svm2[i,1]-svm_test$SalePrice[i])^2 
-}
-rmse_2 = (se/nrow(prediction_svm2))^0.5
-rmse_2
-
-# SVM model 3 (using the significant factors shown in the stepwise regression model)
 model_svm3 <- ksvm(SalePrice ~ MSZoning + LotArea + LotShape + LandContour + 
     LandSlope + Neighborhood + Condition1 + BldgType + HouseStyle + 
     OverallQual + OverallCond + YearBuilt + Exterior1st + MasVnrArea + 
@@ -230,18 +211,19 @@ model_svm3 <- ksvm(SalePrice ~ MSZoning + LotArea + LotShape + LandContour +
     GrLivArea + BsmtFullBath + FullBath + BedroomAbvGr + KitchenAbvGr + 
     KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + 
     GarageQual + GarageCond + WoodDeckSF + SaleCondition, data = svm_train, kernel = "vanilladot")
-# Basic information about the model
-model_svm3
-# Prediction on testing data
-prediction_svm3 <- predict(model_svm3, svm_test)
-# RMSE Calculation
-se = 0
-for (i in 1:nrow(prediction_svm3)) {
-  se = se + (prediction_svm3[i,1]-svm_test$SalePrice[i])^2 
-}
-rmse_3 = (se/nrow(prediction_svm3))^0.5
-rmse_3
 ```
+
+Predict the result on the test set
+```{r}
+prediction_svm1 <- predict(model_svm1, svm_test)
+prediction_svm2 <- predict(model_svm2, svm_test)
+prediction_svm3 <- predict(model_svm3, svm_test)
+cor(prediction_svm1, svm_test$SalePrice)
+cor(prediction_svm2, svm_test$SalePrice)
+cor(prediction_svm3, svm_test$SalePrice)
+```
+3 SVM models were constructed and we would evaluate the accuracy based on correlation between the predictions of the models and the sales price of the test data. Model 1,2, and 3 had an accuracy of 0.863, 0.896, and 0.896 respectively. It means that using the significant factors from regression to construct the model would provide us with a better prediction. 
+
 
 ## KNN
 ```{r}
@@ -250,7 +232,8 @@ cleanHouseData_rand <- as.data.frame(model.matrix(~ . -1, data=cleanHouseData_ra
 normalize <- function(x) { 
   return((x - min(x)) / (max(x) - min(x)))
 }
-cleanHouseData_norm <- as.data.frame(lapply(cleanHouseData_rand, normalize))
+cleanHouseData_norm <- as.data.frame(lapply(cleanHouseData_rand[,!names(cleanHouseData_rand) == "SalePrice"], normalize))
+cleanHouseData_norm$SalePrice <- cleanHouseData_rand$SalePrice
 str(cleanHouseData_norm)
 data("cleanHouseData_norm")
 data <- cleanHouseData_norm
@@ -259,17 +242,22 @@ set.seed(1234)
 ind <- sample(2, nrow(data), replace = T, prob = c(.7,.3))
 training <- data[ind == 1,]
 test <- data[ind == 2,]
-trControl <- trainControl(method = 'repeatedcv',
-                          number = 10,
-                          repeats = 3)
+trControl <- trainControl(method = 'repeatedcv',number = 10, repeats = 3)
+
 set.seed(333)
-fit <- train(SalePrice ~.,
-             data = training,
-             tuneGrid = expand.grid(k=1:70),
-             method = 'knn',
-             trControl = trControl,
-             preProc = c('center', 'scale'))
-fit
+fit <- train(SalePrice ~., data = training,tuneGrid = expand.grid(k=1:70), method = 'knn', trControl = trControl,preProc = c('center', 'scale'))
+
+plot(fit)
+varImp(fit)
+pred <- predict(fit, newdata = test)
+RMSE(pred, test$SalePrice)
+plot(pred ~ test$SalePrice)
+cor(pred,test$SalePrice)
+
 ```
+
+
+
+
 
 
