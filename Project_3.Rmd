@@ -243,7 +243,7 @@ rmse_3 = (se/nrow(prediction_svm3))^0.5
 rmse_3
 ```
 
-## KNN
+### Constructing a KNN Regression
 ```{r}
 cleanHouseData_random <- cleanHouseData_Train[sample(nrow(cleanHouseData_Train)),]
 cleanHouseData_rand <- as.data.frame(model.matrix(~ . -1, data=cleanHouseData_random))
@@ -258,10 +258,12 @@ str(cleanHouseData_norm)
 data("cleanHouseData_norm")
 data <- cleanHouseData_norm
 str(data)
+
 set.seed(1234)
 ind <- sample(2, nrow(data), replace = T, prob = c(.7,.3))
 training <- data[ind == 1,]
 test <- data[ind == 2,]
+
 trControl <- trainControl(method = 'repeatedcv',
                           number = 10,
                           repeats = 3)
@@ -272,7 +274,7 @@ fit <- train(SalePrice ~.,
              method = 'knn',
              trControl = trControl,
              preProc = c('center', 'scale'))
-fit
+
 fit
 plot(fit)
 varImp(fit)
@@ -282,6 +284,9 @@ plot(pred ~ test$SalePrice)
 
 
 ```
+
+
+The KNN Regression we constructed helps in determining which explanatory variables are best in predicting the sale price for a house. The varImp function lets us see that OverallQual,GrLivArea, and TotalBsmtSF are some of the best variables in price the sale price of a house. Meanwhile, variables like the number of fireplaces, or the year the garage was built are not that valuable in this prediction. Furthemore, the plot above shows the actual  sale price of a house against the predicted sale price of the house. Since the plot is pretty linear - with the exception of a few outliers - and has a slope close to one, we believe this is a decent model in predicting the sale price of a house.  
 
 
 
