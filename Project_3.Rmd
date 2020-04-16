@@ -88,7 +88,7 @@ Finding out the significance of the factors
 # Basic linear regression with no further considerations
 SalePrice_LinReg = lm(SalePrice ~ ., data = cleanHouseData_Train)
 library(MASS)
-SalePrice_StepReg = stepAIC(SalePrice_LinReg, direction = "both")
+SalePrice_StepReg = stepAIC(SalePrice_LinReg, direction = "both", trace = FALSE)
 ```
 
 Summary of the regression performance
@@ -106,7 +106,8 @@ library(caret)
 library(randomForest)
 ```
 
-Performing a Train/Test Split
+Performing a Train/Test Split   
+(The Train/Test Ids are also used for the remaining models to make sure that the training and testing sets are the same)
 ```{r}
 set.seed(300)
 rfHouseData = cleanHouseData_Train
@@ -120,6 +121,10 @@ Contruct the model
 ```{r}
 rfModel1 = randomForest(SalePrice ~., data = rfHouseDataTrain)
 rfModel1
+```
+
+A look into the process of the model
+```{r}
 plot(rfModel1)
 ```
 
@@ -127,79 +132,105 @@ Predict the result on the test set
 ```{r}
 prediction1 = predict(rfModel1, rfHouseDataTest, type = "response")
 pre1 = data.frame(prediction1,rfHouseDataTest$SalePrice)
-cor(prediction1,rfHouseDataTest$SalePrice)
 ```
 
-- Description of results of random forest
-
-
-## ANN Model
-
-### Creating an ANN
+The correlation between the test set and the model prediction is the following:  
 ```{r}
-#data cleaning for ANN
+cor(prediction1,rfHouseDataTest$SalePrice)
+
+```
+
+From the random forest model, the strong correlation of `r cor(prediction1,rfHouseDataTest$SalePrice)` here implies precise prediction that the predicted data goes in the same trend with the true result. We will take this as our final result for the random forest model.
+
+```{r}
+rfFinalPrediction = prediction1
+```
+
+
+
+We will then go on and evaluate more other models and compare the results.
+
+
+### ANN
+
+Import required libraries
+```{r}
+library(nnet)
+library(RCurl)
+```
+
+Convert the numeric data into categorical data for ANN usage
+```{r}
 #converting categorical data to numeric data
 cleanHouseData_Train[] <- data.matrix(cleanHouseData_Train)
 summary(cleanHouseData_Train)
+```
 
+Normalizing the data
+```{r}
 #normalize dataset
 normalize <- function(x) { 
   return((x - min(x)) / (max(x) - min(x)))
 }
+
 #exclude SalePrice from normalization as we want to predict SalePrice
 annHouseData <- as.data.frame(lapply(cleanHouseData_Train[,!names(cleanHouseData_Train) == "SalePrice"], normalize))
 summary(annHouseData)
 
 #Include the SalePrice variable back into the dataset
 annHouseData$SalePrice <- cleanHouseData_Train$SalePrice
-set.seed(300)
-train_id <- sample(1:nrow(annHouseData), 0.8*nrow(annHouseData))
-test_id <- setdiff(1:nrow(annHouseData),train_id)
-annHouseDataTrain <- annHouseData[train_id,]
-annHouseDataTest <- annHouseData[test_id,]
+```
 
-# used only variables which had ** or *** in terms of significance level from the original lm model. When I used only variables with *** significance level, the accuracy was 0.8568247. When I used only variables with *, ** and ***, the accuracy was at 0.8646189. The best accuracy of 0.8807884 was obtained when I used variables with only ** and ***
+Train/Test Split
+```{r}
+annHouseDataTrain <- annHouseData[trainId,]
+annHouseDataTest <- annHouseData[testId,]
+```
+
+Model Building.  
+```{r}
 library(nnet)
 ann_model <- nnet(SalePrice ~ MSSubClass + LotArea + LandContour + OverallQual + OverallCond + MasVnrType
 + MasVnrArea + ExterQual + BsmtQual + BsmtExposure + BsmtFullBath + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + SaleCondition,
     data=annHouseDataTrain,
     size=10, linout=TRUE, skip=TRUE, MaxNWts=10000, trace=FALSE, maxit=100)
-predicted_saleprice <- predict(ann_model, newdata=annHouseDataTest[,!names(annHouseDataTest)=="SalePrice"])
-cor(predicted_saleprice, annHouseDataTest$SalePrice)
 
-#import function to plot neural network from Github found from this link: https://beckmw.wordpress.com/2013/03/04/visualizing-neural-networks-from-the-nnet-package/
-require(RCurl)
-root.url<-'https://gist.githubusercontent.com/fawda123'
-raw.fun<-paste(root.url,'5086859/raw/cc1544804d5027d82b70e74b83b3941cd2184354/nnet_plot_fun.r',sep='/')
-
-script<-getURL(raw.fun, ssl.verifypeer = FALSE)
-eval(parse(text = script))
-rm('script','raw.fun')
-#Plotting the neural network
-par(mar=numeric(4),family='serif')
-plot(ann_model,nid=F, circle.cex=2,cex=0.8)
 ```
 
-## Support Vector Machine
+Model Results.
+  
+We used only variables which had ** or *** in terms of significance level from the original lm model. When I used only variables with *** significance level, the accuracy was 0.8568247. When I used only variables with \*, ** and ***, the accuracy was at 0.8646189. The best accuracy of 0.8807884 was obtained when I used variables with only ** and ***.  
+```{r}
+predicted_saleprice <- predict(ann_model, newdata=annHouseDataTest[,!names(annHouseDataTest)=="SalePrice"])
+cor(predicted_saleprice, annHouseDataTest$SalePrice)
+```
+
+We will thus take the model yielding the highest correlation as our final model for ANN.
+```{r}
+annFinalPrediction = predicted_saleprice
+```
+
+
+### Support Vector Machine
 Importing the required library
 ```{r}
 library(kernlab)
 ```
 
-Randomize the data
+Import the data
 ```{r}
-set.seed(300)
-svm <- cleanHouseData_Train[sample(nrow(cleanHouseData_Train)),]
+svmHouseData = cleanHouseData_Train
 ```
 
 Performing a Train/Test Split
 ```{r}
-svm_train <- svm[1:1167, ]
-svm_test  <- svm[1168:1459, ]
+svm_train = rfHouseData[trainId,]
+svm_test = rfHouseData[testId,]
 ```
 
-Contruct the model
-3 different Models are used. The first model includes all the variables of the dataset. The second model includes all the significant factors of the linear regression. The third model includes all the significant factors of the stepwise regression.
+Contruct the model  
+6 different Models are used. The first model includes all the variables of the dataset. The second model includes all the significant factors of the linear regression. The third model includes all the significant factors of the stepwise regression.  
+The models 4-6 are using the same input as the first three models but using different kernels (rbf).
 ```{r}
 model_svm1 <- ksvm(SalePrice ~ ., data = svm_train,
                           kernel = "vanilladot")
@@ -211,9 +242,23 @@ model_svm3 <- ksvm(SalePrice ~ MSZoning + LotArea + LotShape + LandContour +
     GrLivArea + BsmtFullBath + FullBath + BedroomAbvGr + KitchenAbvGr + 
     KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + 
     GarageQual + GarageCond + WoodDeckSF + SaleCondition, data = svm_train, kernel = "vanilladot")
+
+
+model_svm4 <- ksvm(SalePrice ~ ., data = svm_train,
+                          kernel = "rbfdot")
+model_svm5 <- ksvm(SalePrice ~ MSZoning+ LotArea+ LotShape+ LandContour+ LandSlope+ Neighborhood+ BldgType+ OverallQual+ OverallCond+ Exterior1st+ Exterior2nd+ ExterQual+ BsmtQual+ BsmtExposure+ BsmtFinType1+ BsmtFullBath+ FullBath+ KitchenQual+ TotRmsAbvGrd+ Functional, data = svm_train, kernel = "rbfdot")
+model_svm6 <- ksvm(SalePrice ~ MSZoning + LotArea + LotShape + LandContour + 
+    LandSlope + Neighborhood + Condition1 + BldgType + HouseStyle + 
+    OverallQual + OverallCond + YearBuilt + Exterior1st + MasVnrArea + 
+    ExterQual + BsmtQual + BsmtExposure + BsmtFinType1 + X2ndFlrSF + 
+    GrLivArea + BsmtFullBath + FullBath + BedroomAbvGr + KitchenAbvGr + 
+    KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + 
+    GarageQual + GarageCond + WoodDeckSF + SaleCondition, data = svm_train, kernel = "rbfdot")
+
+
 ```
 
-Predict the result on the test set
+Predict the result on the test set  
 ```{r}
 prediction_svm1 <- predict(model_svm1, svm_test)
 prediction_svm2 <- predict(model_svm2, svm_test)
@@ -221,42 +266,121 @@ prediction_svm3 <- predict(model_svm3, svm_test)
 cor(prediction_svm1, svm_test$SalePrice)
 cor(prediction_svm2, svm_test$SalePrice)
 cor(prediction_svm3, svm_test$SalePrice)
+
+
+prediction_svm4 <- predict(model_svm4, svm_test)
+prediction_svm5 <- predict(model_svm5, svm_test)
+prediction_svm6 <- predict(model_svm6, svm_test)
+cor(prediction_svm4, svm_test$SalePrice)
+cor(prediction_svm5, svm_test$SalePrice)
+cor(prediction_svm6, svm_test$SalePrice)
 ```
-3 SVM models were constructed and we would evaluate the accuracy based on correlation between the predictions of the models and the sales price of the test data. Model 1,2, and 3 had an accuracy of 0.863, 0.896, and 0.896 respectively. It means that using the significant factors from regression to construct the model would provide us with a better prediction. 
+6 SVM models were constructed and we would evaluate the accuracy based on correlation between the predictions of the models and the sales price of the test data. Model 1,2, and 3 had an accuracy of 0.863, 0.896, and 0.896 respectively. Meanwhile, model 4,5, and 6 had an accuracy of 0.943, 0.914, and 0.941 respectively.
 
-
-## KNN
+The model using all the factors from the dataset together with the rbf kernel trick is giving us the best result. We will take that as our final prediction.
 ```{r}
-cleanHouseData_random <- cleanHouseData_Train[sample(nrow(cleanHouseData_Train)),]
-cleanHouseData_rand <- as.data.frame(model.matrix(~ . -1, data=cleanHouseData_random))
-normalize <- function(x) { 
-  return((x - min(x)) / (max(x) - min(x)))
-}
+svmFinalPrediction = prediction_svm4
+```
+
+
+### KNN
+
+Use model matrix to perform dummy encoding.
+```{r}
+cleanHouseData_rand <- as.data.frame(model.matrix(~ . -1, data= cleanHouseData_Train))
+```
+
+Normalize the data for KNN usage.
+```{r}
 cleanHouseData_norm <- as.data.frame(lapply(cleanHouseData_rand[,!names(cleanHouseData_rand) == "SalePrice"], normalize))
 cleanHouseData_norm$SalePrice <- cleanHouseData_rand$SalePrice
+
 str(cleanHouseData_norm)
-data("cleanHouseData_norm")
-data <- cleanHouseData_norm
-str(data)
-set.seed(1234)
-ind <- sample(2, nrow(data), replace = T, prob = c(.7,.3))
-training <- data[ind == 1,]
-test <- data[ind == 2,]
+```
+
+Train/Test Split
+```{r}
+knnData = cleanHouseData_norm
+
+knnDataTrain = knnData[trainId,]
+knnDataTest = knnData[testId,]
+```
+
+Train control for KNN, we used a repeated 10-fold cross-validation here to find the optimized number of K in the model.
+```{r}
 trControl <- trainControl(method = 'repeatedcv',number = 10, repeats = 3)
+```
 
+Build the KNN model.
+```{r}
 set.seed(333)
-fit <- train(SalePrice ~., data = training,tuneGrid = expand.grid(k=1:70), method = 'knn', trControl = trControl,preProc = c('center', 'scale'))
+knn_model <- train(SalePrice ~., data = knnDataTrain,tuneGrid = expand.grid(k=1:70), method = 'knn', trControl = trControl,preProc = c('center', 'scale'))
+```
 
-plot(fit)
-varImp(fit)
-pred <- predict(fit, newdata = test)
-RMSE(pred, test$SalePrice)
-plot(pred ~ test$SalePrice)
-cor(pred,test$SalePrice)
+Visualizing the process of the cross validation in finding the best K by minimizing the RMSE. The variable importance within the model is also listed below.
+```{r}
+plot(knn_model)
 
+varImp(knn_model)
+```
+
+Prediction on the testing set.
+```{r}
+knnPrediction <- predict(knn_model, newdata = knnDataTest)
+```
+
+Model Evaluation
+```{r}
+plot(knnPrediction ~ knnDataTest$SalePrice)
+cor(knnPrediction,knnDataTest$SalePrice)
+```
+
+The correlation of the cross-validated KNN model turns out to be `r cor(knnPrediction,knnDataTest$SalePrice)`, which is really high. We will take this as our final result.
+
+```{r}
+knnFinalPrediction = knnPrediction
 ```
 
 
+### Combining all models
+
+Build the dataframe containing all the prediction results.
+```{r}
+predResults = data.frame(rfFinalPrediction,annFinalPrediction,svmFinalPrediction,knnFinalPrediction, rfHouseDataTest$SalePrice)
+colnames(predResults) = c("Random Forest", "ANN", "SVM", "KNN", "True Price")
+```
+
+Use the strength of correlation to give a weighted average of each model's final output.
+```{r}
+rfCor = cor(predResults$`Random Forest`,predResults$`True Price`)
+annCor = cor(predResults$ANN,predResults$`True Price`)
+svmCor = cor(predResults$SVM,predResults$`True Price`)
+knnCor = cor(predResults$KNN,predResults$`True Price`)
+sumOfCor = rfCor+annCor+svmCor+knnCor
+
+rfWeight = rfCor/sumOfCor
+annWeight = annCor/sumOfCor
+svmWeight = svmCor/sumOfCor
+knnWeight = knnCor/sumOfCor
+
+#Taking weighted average of predictions
+predResults[,"Weighted Average"] = predResults$`Random Forest`*rfWeight+ predResults$ANN*annWeight+ predResults$SVM*svmWeight+ predResults$KNN*knnWeight
+```
+
+The correlation for the combined model.
+```{r}
+cor(predResults$`Weighted Average`, predResults$`True Price`)
+```
+
+## Conclusion
+
+Our original objective of our group was to predict the housing prices of IOWA based on machine learning models. Firstly, we used the Boruta package to identify important variables in the dataset. Also, we used linear regression to have a quick glance on significant variables. 
+  
+Based on that, we then went on and built four different models including Random Forest, Artificial Neural Network, Support Vector Regression, and K-nearest-neighbors.  
+  
+Out of the four models, the model with the highest correlation of `r cor(predResults$`Random Forest`,predResults$`True Price`)` with the testing set was random forest. This is followed by SVM's `r cor(predResults$SVM,predResults$`True Price`)`, ANN's `r cor(predResults$ANN,predResults$`True Price`)`and KNN's `r cor(predResults$KNN,predResults$`True Price`)` in correlation.   
+  
+We believe that our rigor of the models can be improved by obtaining a weighted-average of each of the individual models, since it was trained across multiple mechanisms. The correlation of our combined model was `r cor(predResults$`Weighted Average`, predResults$`True Price`)`.
 
 
 
