@@ -84,11 +84,12 @@ Finding out the significance of the factors
 - Linear Regression
 - Stepwise Regression
 
-```{r}
+```{r echo=T, message=FALSE, warning=FALSE}
 # Basic linear regression with no further considerations
 SalePrice_LinReg = lm(SalePrice ~ ., data = cleanHouseData_Train)
 library(MASS)
-SalePrice_StepReg = stepAIC(SalePrice_LinReg, direction = "both")
+SalePrice_StepReg = stepAIC(SalePrice_LinReg, direction = "both", trace = FALSE) 
+
 ```
 
 Summary of the regression performance
@@ -163,32 +164,55 @@ library(nnet)
 ann_model <- nnet(SalePrice ~ MSSubClass + LotArea + LandContour + OverallQual + OverallCond + MasVnrType
 + MasVnrArea + ExterQual + BsmtQual + BsmtExposure + BsmtFullBath + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + SaleCondition,
     data=annHouseDataTrain,
-    size=10, linout=TRUE, skip=TRUE, MaxNWts=10000, trace=FALSE, maxit=100)
+    size=20, linout=TRUE, skip=TRUE, MaxNWts=10000, trace=FALSE, maxit=100)
 predicted_saleprice <- predict(ann_model, newdata=annHouseDataTest[,!names(annHouseDataTest)=="SalePrice"])
 cor(predicted_saleprice, annHouseDataTest$SalePrice)
 
 #import function to plot neural network from Github found from this link: https://beckmw.wordpress.com/2013/03/04/visualizing-neural-networks-from-the-nnet-package/
 require(RCurl)
+ 
 root.url<-'https://gist.githubusercontent.com/fawda123'
-raw.fun<-paste(root.url,'5086859/raw/cc1544804d5027d82b70e74b83b3941cd2184354/nnet_plot_fun.r',sep='/')
-
+raw.fun<-paste(
+  root.url,
+  '5086859/raw/cc1544804d5027d82b70e74b83b3941cd2184354/nnet_plot_fun.r',
+  sep='/'
+  )
 script<-getURL(raw.fun, ssl.verifypeer = FALSE)
 eval(parse(text = script))
 rm('script','raw.fun')
+
 #Plotting the neural network
 par(mar=numeric(4),family='serif')
-plot(ann_model,nid=F, circle.cex=2,cex=0.8)
+plot(ann_model,nid=F, circle.cex=2,cex=0.8, alpha.val=0)
+
+#plotting function
+library(downloader)
+source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
+
+
+library(devtools)
+library(neuralnet)
+ 
+source_url('https://gist.github.com/fawda123/7471137/raw/c720af2cea5f312717f020a09946800d55b8f45b/nnet_plot_update.r')
+  
+AND <- c(rep(0,7),1)
+OR <- c(0,rep(1,7))
+binary.data <- data.frame(expand.grid(c(0,1), c(0,1), c(0,1)), AND, OR)
+print(net <- neuralnet(AND+OR~Var1+Var2+Var3, binary.data, hidden=0,
+rep=10, err.fct="ce", linear.output=FALSE))
+ 
+plot.nnet(net)
+
 ```
 
 ## Support Vector Machine
 ```{r}
 # Randomize data
-set.seed(300)
-svm <- cleanHouseData_Train[sample(nrow(cleanHouseData_Train)),]
+svm_HouseData = cleanHouseData_Train
 
 # Divide into training and test data
-svm_train <- svm[1:1167, ]
-svm_test  <- svm[1168:1459, ]
+svm_train = svm_HouseData[trainId,]
+svm_test = svm_HouseData[testId,]
 
 # Training a SVM model (kernal "vanilladot" produces the lowerst rmse after trials)
 library(kernlab)
@@ -197,30 +221,17 @@ model_svm1 <- ksvm(SalePrice ~ ., data = svm_train,
 
 # Basic information about the model
 model_svm1
+
 # Prediction on testing data
 prediction_svm1 <- predict(model_svm1, svm_test)
 
-# RMSE Calculation
-se = 0
-for (i in 1:nrow(prediction_svm1)) {
-  se = se + (prediction_svm1[i,1]-svm_test$SalePrice[i])^2
-}
-rmse_1 = (se/nrow(prediction_svm1))^0.5
-rmse_1
-
 # SVM model 2 (build the model by using the significant factors shown in the regression model) 
 model_svm2 <- ksvm(SalePrice ~ MSZoning+ LotArea+ LotShape+ LandContour+ LandSlope+ Neighborhood+ BldgType+ OverallQual+ OverallCond+ Exterior1st+ Exterior2nd+ ExterQual+ BsmtQual+ BsmtExposure+ BsmtFinType1+ BsmtFullBath+ FullBath+ KitchenQual+ TotRmsAbvGrd+ Functional, data = svm_train, kernel = "vanilladot")
+
 # Basic information about the model
 model_svm2
 # Prediction on testing data
 prediction_svm2 <- predict(model_svm2, svm_test)
-# RMSE Calculation
-se = 0
-for (i in 1:nrow(prediction_svm2)) {
-  se = se + (prediction_svm2[i,1]-svm_test$SalePrice[i])^2 
-}
-rmse_2 = (se/nrow(prediction_svm2))^0.5
-rmse_2
 
 # SVM model 3 (using the significant factors shown in the stepwise regression model)
 model_svm3 <- ksvm(SalePrice ~ MSZoning + LotArea + LotShape + LandContour + 
@@ -230,17 +241,12 @@ model_svm3 <- ksvm(SalePrice ~ MSZoning + LotArea + LotShape + LandContour +
     GrLivArea + BsmtFullBath + FullBath + BedroomAbvGr + KitchenAbvGr + 
     KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + 
     GarageQual + GarageCond + WoodDeckSF + SaleCondition, data = svm_train, kernel = "vanilladot")
+
 # Basic information about the model
 model_svm3
 # Prediction on testing data
 prediction_svm3 <- predict(model_svm3, svm_test)
-# RMSE Calculation
-se = 0
-for (i in 1:nrow(prediction_svm3)) {
-  se = se + (prediction_svm3[i,1]-svm_test$SalePrice[i])^2 
-}
-rmse_3 = (se/nrow(prediction_svm3))^0.5
-rmse_3
+
 ```
 
 ## KNN
