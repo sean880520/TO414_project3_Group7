@@ -1,7 +1,7 @@
 ---
-title: "Project 3"
+title: "Project 3: The Ames Housing Dataset"
 author: "Sean Tsai, Olli Rissanen, Kit Tsang, Ying Jie Chin, Abhinav Alluri"
-date: "4/1/2020"
+date: "4/13/2020"
 output: html_document
 ---
 
@@ -9,62 +9,112 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# House Prices Prediction
 
-## General Data Exploration
 
-### Importing and exploring data
+# Description of the Data and our Project
+
+The Ames Housing Dataset is an incredible dataset with 79 explanatory variables describing almost every aspect of residential homes in Ames, Iowa, a city that serves as a home for the Iowa State University and has a population of around 60,000. 
+
+The 79 variables focus on the quality and quantity of many physical attributes of the properties, and most of the variables are exactly the type of information that a typical home buyer wants to know about a potential property. There are variables about various area dimensions (such as lot size and different square footage variables), discrete variables that describe the number of items (e.g. bathrooms) occurring within the house, and categorical variables classifying e.g. streets and neighborhoods. 
+
+With the dataset and based on the listed variables, we aim to predict sale prices of different Ames, Iowa properties using different machine learning models. For our predictions, we plan to use ANN, kNN, SVM, and Random Forest models, as well as a prediction model that combines all these four models. 
+
+Besides submitting this file as our Project 3 deliverable, we will make our final predictions on a special testing dataset provided in Kaggle and use those predictions to participate in a Kaggle Competition that is based on the Ames Housing Dataset.
+
+
+
+# General Data Exploration
+
+
+## Importing Data
 
 ```{r}
+# Importing the train part of the dataset
 rawHouseData_Train <- read.csv("train.csv", stringsAsFactors = FALSE)
-rawHouseData_Test <- read.csv("test.csv", stringsAsFactors = FALSE)
 
+# Importing the test part of the dataset (used only for the final predictions for the Kaggle competition)
+rawHouseData_Test <- read.csv("test.csv", stringsAsFactors = FALSE)
+```
+
+
+## Exploring Data
+
+```{r}
 str(rawHouseData_Train)
 summary(rawHouseData_Train)
 ```
 
-### Cleaning data
-```{r}
-# We need to use characters for our Boruta screening of features
-CharCategory <- c(names(Filter(is.character, rawHouseData_Train)), "MSSubClass")
 
-#Identifying the percentage of NAs in each column
+
+# Data Cleaning
+
+
+## Converting Data into Characters for Data Cleaning
+
+```{r}
+# We need to use characters for our Boruta Screening of features
+CharCategory <- c(names(Filter(is.character, rawHouseData_Train)), "MSSubClass")
+```
+
+
+## Identifying NAs with mice
+
+```{r}
+# Importing the required libraries
 library(VIM)
 library(mice)
+
+# Identifying the percentage of NAs in each column
 mice_plot <- aggr(rawHouseData_Train, col=c('navyblue','yellow'),
                     numbers=TRUE, sortVars=TRUE,
                     labels=names(rawHouseData_Train), cex.axis=.4,
                     gap=3, ylab=c("Missing data","Pattern"))
+```
 
-#taking care of NAs according to context
-rawHouseData_Train <- rawHouseData_Train[!is.na(rawHouseData_Train$Electrical),] #dropped na;only 1 missing observation
-rawHouseData_Train <- rawHouseData_Train[,!names(rawHouseData_Train)=="GarageYrBlt"] #drop GarageYrBlt column;we have many other garage variables, and imputation of year = 0 might affect the regression
-rawHouseData_Train[is.na(rawHouseData_Train$MasVnrArea),] = 0 #NAs here mean that there is no Masonry veneer so area = 0
 
-# Impute NAs by "Missing" for characters for the rest of the columns (i.e. PoolQC,MiscFeature,Alley etc) where NA = none
+## Removing and Imputing NAs
+
+```{r}
+# Dropping the row with NA in Electrical column (only one missing observation for the variable)
+rawHouseData_Train <- rawHouseData_Train[!is.na(rawHouseData_Train$Electrical),] 
+
+# Dropping the GarageYrBlt column - imputing NAs with year = 0 might affect regression and other garage variables exist
+rawHouseData_Train <- rawHouseData_Train[,!names(rawHouseData_Train)=="GarageYrBlt"] 
+
+# Imputing NAs in MasVnrArea with 0
+rawHouseData_Train$MasVnrArea <- ifelse(is.na(rawHouseData_Train$MasVnrArea) == TRUE, 0, rawHouseData_Train$MasVnrArea)
+
+# Imputing NAs by "Missing" for characters for the rest of the columns (i.e. e.g. PoolQC, MiscFeature, Alley), where NA means that attribute does not exist
 for(i in CharCategory){
   rawHouseData_Train[,i] = ifelse(is.na(rawHouseData_Train[,i]), "Missing", rawHouseData_Train[,i])
   rawHouseData_Test[,i] = ifelse(is.na(rawHouseData_Test[,i]), "Missing", rawHouseData_Test[,i])
 }
 
-#Imputing the NAs for Lot Frontage using predictive mean matching. 
+# Imputing the NAs for Lot Frontage using predictive mean matching 
 rawHouseData_Train <- mice(rawHouseData_Train, m=5, maxit = 50, method = 'pmm', seed = 100)
 rawHouseData_Train <- complete(rawHouseData_Train)
 ```
 
-### Boruta Training
+
+## Further Cleaning with Boruta Training
+
 ```{r}
 # Boruta Train package to identify important features (https://www.datacamp.com/community/tutorials/feature-selection-R-boruta)
+
+# Importing the required library
 library(Boruta)
+
+# Executing Boruta Training
 set.seed(233)
 boruta_Train <- Boruta(rawHouseData_Train[names(rawHouseData_Train) != "Id" & names(rawHouseData_Train) != "SalePrice" ], rawHouseData_Train$SalePrice ,  doTrace = 2)
+
 print(boruta_Train)
 plot(boruta_Train)
 
-# Select only those features that passed the boruta screening
+# Selecting only the features that passed the Boruta Screening
 cleanHouseData_Train <- rawHouseData_Train[getSelectedAttributes(boruta_Train,withTentative = F)]
 
-# Convert characters back into factors
+# Converting characters back into factors
 cleanHouseData_Train[sapply(cleanHouseData_Train,is.character)] <- lapply(cleanHouseData_Train[sapply(cleanHouseData_Train,is.character)], as.factor)
 
 # Adding SalePrice back into the train data
@@ -72,189 +122,361 @@ cleanHouseData_Train$SalePrice <- rawHouseData_Train$SalePrice
 ```
 
 
-A Look into the cleaned data
+## A Look into the cleaned data
+
 ```{r}
 str(cleanHouseData_Train)
 summary(cleanHouseData_Train)
 ```
 
-### Creating a linear regression to explore the data
 
-Finding out the significance of the factors
-- Linear Regression
-- Stepwise Regression
+
+# Linear and Stepwise Regressions
+
+In this section, we conduct Linear and Stewise Regressions to explore variable significance.
+
+
+## Building a Linear Regression
 
 ```{r}
-# Basic linear regression with no further considerations
 SalePrice_LinReg = lm(SalePrice ~ ., data = cleanHouseData_Train)
+```
+
+### Summary of Linear Regression Performance
+
+```{r}
+summary(SalePrice_LinReg)
+```
+
+
+## Building a Stepwise Regression
+
+```{r}
+# Importing the required library
 library(MASS)
+
+# Creating the regression
 SalePrice_StepReg = stepAIC(SalePrice_LinReg, direction = "both")
 ```
 
-Summary of the regression performance
+### Summary of the Stepwise Regression Performance
+
 ```{r}
 summary(SalePrice_StepReg)
 ```
 
-## Models
 
-### Random Forest Regression
 
-Importing the required library
+# Creating a Normalized Version of the Data
+
+
+## Converting Categorical Data to Numeric Data
+
+```{r}
+cleanHouseData_Train[] <- data.matrix(cleanHouseData_Train)
+```
+
+
+## Normalization function
+
+```{r}
+normalize <- function(x) { 
+  return((x - min(x)) / (max(x) - min(x)))
+}
+```
+
+
+## Executing the normalization
+
+```{r}
+# Normalizing Data (excluding SalePrice column)
+Norm_HouseData <- as.data.frame(lapply(cleanHouseData_Train[,!names(cleanHouseData_Train) == "SalePrice"], normalize))
+
+# Adding the SalePrice variable to the normalized data
+Norm_HouseData$SalePrice <- cleanHouseData_Train$SalePrice
+```
+
+
+## A look into the Normalized Data
+
+```{r}
+str(Norm_HouseData)
+summary(Norm_HouseData)
+```
+
+
+
+# Dividing Data into Train and Test parts
+
+
+## Randomizing Data and Creating Train and Test IDs
+
+```{r}
+set.seed(300)
+trainID <- sample(1:nrow(cleanHouseData_Train),0.8*nrow(cleanHouseData_Train))
+testID <- setdiff(1:nrow(cleanHouseData_Train), trainID)
+```
+
+
+## Dividing the Original Cleaned Data into Train and Test parts
+
+Here we divide the original cleaned data (i.e. cleanHouseData_Train) to Train and Test parts to be used in our Random Forest and SVM Models.
+
+```{r}
+OG_HouseData_Train <- cleanHouseData_Train[trainId,]
+OG_HouseData_Test <- cleanHouseData_Train[testId,]
+```
+
+
+## Dividing the Normalized Data into Train and Test parts
+
+Here we divide the normalized data into Train and Test parts to be used in our ANN and kNN Models.
+
+```{r}
+Norm_HouseData_Train <- Norm_HouseData[train_id,]
+Norm_HouseData_Test <- Norm_HouseData[test_id,]
+```
+
+
+
+# Predictive Models
+
+
+## Random Forest Model
+
+### Importing the required libraries
+
 ```{r}
 library(caret)
 library(randomForest)
 ```
 
-Performing a Train/Test Split
+### Renaming Train and Test Data for Clarity
+
 ```{r}
-set.seed(300)
-rfHouseData = cleanHouseData_Train
-trainId = sample(1:nrow(rfHouseData),0.8*nrow(rfHouseData))
-testId = setdiff(1:nrow(rfHouseData), trainId)
-rfHouseDataTrain = rfHouseData[trainId,]
-rfHouseDataTest = rfHouseData[testId,]
+RF_HouseData_Train <- OG_HouseData_Train
+RF_HouseData_Test <- OG_HouseData_Test
 ```
 
-Contruct the model
+### Creating the Random Forest Model
+
+**To decide the variable combination used in the Random Forest Model, we tested a few possible combinations. Those combinations were using all variables left after data cleaning, using xxxxxxx, ...**
+We chose to use **xxxxxx** as it seemed to produce the highest accuracy.
+
 ```{r}
-rfModel1 = randomForest(SalePrice ~., data = rfHouseDataTrain)
-rfModel1
-plot(rfModel1)
+RF_Model <- randomForest(SalePrice ~., data = RF_HouseData_Train)
+RF_Model
+
+# Plotting the Random Forest Model
+plot(RF_Model)
 ```
 
-Predict the result on the test set
+### Random Forest Prediction and Results
+
 ```{r}
-prediction1 = predict(rfModel1, rfHouseDataTest, type = "response")
-pre1 = data.frame(prediction1,rfHouseDataTest$SalePrice)
-cor(prediction1,rfHouseDataTest$SalePrice)
+RF_Prediction <- predict(RF_Model, RF_HouseData_Test, type = "response")
+RF_Prediction_DataFrame <- data.frame(RF_Prediction,RF_HouseData_Test$SalePrice)
+cor(RF_Prediction,RF_HouseData_Test$SalePrice)
 ```
 
-- Description of results of random forest
+There is a strong correlation of `r cor(RF_Prediction,RF_HouseData_Test$SalePrice), digits = 3)` between the house prices predicted by the Random Forest Model and actual prices. This implies a good prediction and that the predicted prices follow a similar trend with the real prices. 
 
 
 ## ANN Model
 
-### Creating an ANN
+### Importing the required libraries
+
 ```{r}
-#data cleaning for ANN
-#converting categorical data to numeric data
-cleanHouseData_Train[] <- data.matrix(cleanHouseData_Train)
-summary(cleanHouseData_Train)
-
-#normalize dataset
-normalize <- function(x) { 
-  return((x - min(x)) / (max(x) - min(x)))
-}
-#exclude SalePrice from normalization as we want to predict SalePrice
-annHouseData <- as.data.frame(lapply(cleanHouseData_Train[,!names(cleanHouseData_Train) == "SalePrice"], normalize))
-summary(annHouseData)
-
-#Include the SalePrice variable back into the dataset
-annHouseData$SalePrice <- cleanHouseData_Train$SalePrice
-set.seed(300)
-train_id <- sample(1:nrow(annHouseData), 0.8*nrow(annHouseData))
-test_id <- setdiff(1:nrow(annHouseData),train_id)
-annHouseDataTrain <- annHouseData[train_id,]
-annHouseDataTest <- annHouseData[test_id,]
-
-# used only variables which had ** or *** in terms of significance level from the original lm model. When I used only variables with *** significance level, the accuracy was 0.8568247. When I used only variables with *, ** and ***, the accuracy was at 0.8646189. The best accuracy of 0.8807884 was obtained when I used variables with only ** and ***
 library(nnet)
-ann_model <- nnet(SalePrice ~ MSSubClass + LotArea + LandContour + OverallQual + OverallCond + MasVnrType
-+ MasVnrArea + ExterQual + BsmtQual + BsmtExposure + BsmtFullBath + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + SaleCondition,
-    data=annHouseDataTrain,
-    size=10, linout=TRUE, skip=TRUE, MaxNWts=10000, trace=FALSE, maxit=100)
-predicted_saleprice <- predict(ann_model, newdata=annHouseDataTest[,!names(annHouseDataTest)=="SalePrice"])
-cor(predicted_saleprice, annHouseDataTest$SalePrice)
-
-#import function to plot neural network from Github found from this link: https://beckmw.wordpress.com/2013/03/04/visualizing-neural-networks-from-the-nnet-package/
 require(RCurl)
-root.url<-'https://gist.githubusercontent.com/fawda123'
-raw.fun<-paste(root.url,'5086859/raw/cc1544804d5027d82b70e74b83b3941cd2184354/nnet_plot_fun.r',sep='/')
-
-script<-getURL(raw.fun, ssl.verifypeer = FALSE)
-eval(parse(text = script))
-rm('script','raw.fun')
-#Plotting the neural network
-par(mar=numeric(4),family='serif')
-plot(ann_model,nid=F, circle.cex=2,cex=0.8)
 ```
 
-## Support Vector Machine
-Importing the required library
+### Renaming Train and Test Data for Clarity
+
+```{r}
+ANN_HouseData_Train <- Norm_HouseData_Train
+ANN_HouseData_Test <- Norm_HouseData_Test
+```
+
+### Creating the ANN Model
+
+**Only variables which had either 2- or 3-star signifigance level in the original linear regression model are used for the ANN Model. Models with only 3-star signifigance level variables and with 1-, 2- and 3-star signifigance level variables were also tested but those produced lower accuracies of around 85.6 % and around 86.5 % respectively compared to the chosen models accuracy of around 88 %.** 
+
+```{r}
+ANN_Model <- nnet(SalePrice ~ MSSubClass + LotArea + LandContour + OverallQual + OverallCond + MasVnrType
++ MasVnrArea + ExterQual + BsmtQual + BsmtExposure + BsmtFullBath + KitchenAbvGr + KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + SaleCondition,
+    data=ANN_HouseData_Train,
+    size=10, linout=TRUE, skip=TRUE, MaxNWts=10000, trace=FALSE, maxit=100)
+```
+
+### ANN Prediction and Results
+
+```{r}
+# ANN Prediction
+ANN_Prediction <- predict(ANN_Model, newdata=ANN_HouseData_Test[,!names(ANN_HouseData_Test)=="SalePrice"])
+
+# ANN Results
+cor(ANN_Prediction, ANN_HouseData_Test$SalePrice)
+```
+
+The ANN Model predictions and actual house prices have a correlation of `r round(cor(ANN_Prediction, SVM_HouseData_Test$SalePrice), digits = 3)`.
+
+
+## SVM Model
+
+### Importing the required library
+
 ```{r}
 library(kernlab)
 ```
 
-Randomize the data
+### Renaming Train and Test Data for Clarity
+
 ```{r}
-set.seed(300)
-svm <- cleanHouseData_Train[sample(nrow(cleanHouseData_Train)),]
+SVM_HouseData_Train <- OG_HouseData_Train
+SVM_HouseData_Test <- OG_HouseData_Test
 ```
 
-Performing a Train/Test Split
+### Creating the SVM Model
+
+For the SVM Model we tested not only the different variable combinations, but also different kernels. **The kernels tested were rbfdot and vanilladot. Using all the variables that were left after data cleaning and the rbfdot kernel produced the best accuracy, so those have been chosen for our final SVM Model.** 
+
 ```{r}
-svm_train <- svm[1:1167, ]
-svm_test  <- svm[1168:1459, ]
+# Constructing SVM Model 1
+SVM_Model <- ksvm(SalePrice ~ ., data = SVM_HouseData_Train,
+                          kernel = "rbfdot")
 ```
 
-Contruct the model
-3 different Models are used. The first model includes all the variables of the dataset. The second model includes all the significant factors of the linear regression. The third model includes all the significant factors of the stepwise regression.
+### SVM Model Prediction and Results
+
 ```{r}
-model_svm1 <- ksvm(SalePrice ~ ., data = svm_train,
-                          kernel = "vanilladot")
-model_svm2 <- ksvm(SalePrice ~ MSZoning+ LotArea+ LotShape+ LandContour+ LandSlope+ Neighborhood+ BldgType+ OverallQual+ OverallCond+ Exterior1st+ Exterior2nd+ ExterQual+ BsmtQual+ BsmtExposure+ BsmtFinType1+ BsmtFullBath+ FullBath+ KitchenQual+ TotRmsAbvGrd+ Functional, data = svm_train, kernel = "vanilladot")
-model_svm3 <- ksvm(SalePrice ~ MSZoning + LotArea + LotShape + LandContour + 
-    LandSlope + Neighborhood + Condition1 + BldgType + HouseStyle + 
-    OverallQual + OverallCond + YearBuilt + Exterior1st + MasVnrArea + 
-    ExterQual + BsmtQual + BsmtExposure + BsmtFinType1 + X2ndFlrSF + 
-    GrLivArea + BsmtFullBath + FullBath + BedroomAbvGr + KitchenAbvGr + 
-    KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + 
-    GarageQual + GarageCond + WoodDeckSF + SaleCondition, data = svm_train, kernel = "vanilladot")
+# SVM Model Prediction
+SVM_Prediction <- predict(SVM_Model, SVM_HouseData_Test)
+
+# SVM Model Results
+cor(SVM_Prediction, SVM_HouseData_Test$SalePrice)
 ```
 
-Predict the result on the test set
+The SVM Model predictions and actual house prices have a correlation of `r round(cor(SVM_Prediction, SVM_HouseData_Test$SalePrice), digits = 3)`.
+
+
+## KNN Model
+
+### Renaming Train and Test Data for Clarity
+
 ```{r}
-prediction_svm1 <- predict(model_svm1, svm_test)
-prediction_svm2 <- predict(model_svm2, svm_test)
-prediction_svm3 <- predict(model_svm3, svm_test)
-cor(prediction_svm1, svm_test$SalePrice)
-cor(prediction_svm2, svm_test$SalePrice)
-cor(prediction_svm3, svm_test$SalePrice)
+kNN_HouseData_Train <- Norm_HouseData
+kNN_HouseData_Test <- Norm_HouseData
 ```
-3 SVM models were constructed and we would evaluate the accuracy based on correlation between the predictions of the models and the sales price of the test data. Model 1,2, and 3 had an accuracy of 0.863, 0.896, and 0.896 respectively. It means that using the significant factors from regression to construct the model would provide us with a better prediction. 
 
+### Creating the kNN Model
 
-## KNN
+For kNN Model, we once again tested the same potential variable combinations. Using xxxxxx seemed to produce the best accuracy and, thus was chosen for our final kNN Model.
+
 ```{r}
-cleanHouseData_random <- cleanHouseData_Train[sample(nrow(cleanHouseData_Train)),]
-cleanHouseData_rand <- as.data.frame(model.matrix(~ . -1, data=cleanHouseData_random))
-normalize <- function(x) { 
-  return((x - min(x)) / (max(x) - min(x)))
-}
-cleanHouseData_norm <- as.data.frame(lapply(cleanHouseData_rand[,!names(cleanHouseData_rand) == "SalePrice"], normalize))
-cleanHouseData_norm$SalePrice <- cleanHouseData_rand$SalePrice
-str(cleanHouseData_norm)
-data("cleanHouseData_norm")
-data <- cleanHouseData_norm
-str(data)
-set.seed(1234)
-ind <- sample(2, nrow(data), replace = T, prob = c(.7,.3))
-training <- data[ind == 1,]
-test <- data[ind == 2,]
+# Training Control using a repeated 10-fold cross-validation to find the optimal k-value
 trControl <- trainControl(method = 'repeatedcv',number = 10, repeats = 3)
 
+# Creating the model
 set.seed(333)
-fit <- train(SalePrice ~., data = training,tuneGrid = expand.grid(k=1:70), method = 'knn', trControl = trControl,preProc = c('center', 'scale'))
+kNN_Model <- train(SalePrice ~., data = kNN_HouseData_Train, tuneGrid = expand.grid(k=1:70), method = 'knn', trControl = trControl, preProc = c('center', 'scale'))
 
-plot(fit)
-varImp(fit)
-pred <- predict(fit, newdata = test)
-RMSE(pred, test$SalePrice)
-plot(pred ~ test$SalePrice)
-cor(pred,test$SalePrice)
+# Plotting the kNN model
+plot(kNN_Model)
 
+# Looking into the variable importance within the kNN Model
+varImp(kNN_Model)
 ```
+
+The varImp function helps us see that OverallQual, GrLivArea, and TotalBsmtSF are some of the most meaningful variables in predicting the sale price of a house. Meanwhile, variables like the number of fireplaces, or the year the garage was built are not as significant in this prediction. 
+
+### kNN Model Prediction and Results
+
+```{r}
+kNN_Prediction <- predict(kNN_Model, newdata = kNN_HouseData_Test)
+
+RMSE(kNN_Prediction, kNN_HouseData_Test$SalePrice)
+plot(kNN_Prediction ~ kNN_HouseData_Test$SalePrice)
+cor(kNN_Prediction, kNN_HouseData_Test$SalePrice)
+```
+
+The plot above shows the actual sale price of a house against the predicted sale price of the house. Since the plot is pretty linear - with the exception of a few outliers - and has a slope close to one, the kNN Model seems to be a quite decent model in predicting the sale price of a house. 
+
+The kNN Model predictions and actual house prices have a correlation of `r round(cor(SVM_Prediction, SVM_HouseData_Test$SalePrice), digits = 3)` which supports the view of the kNN Model as a decent predictor for house prices seen already from the plot. 
+
+
+
+# Combined Prediction Model
+
+
+## Building a dataframe containing predictions of all models
+
+```{r}
+House_Prices <- data.frame(RF_Prediction,ANN_Prediction,SVM_Prediction,kNN_Prediction, OG_HouseData_Test$SalePrice)
+colnames(House_Prices) <- c("Random Forest", "ANN", "SVM", "kNN", "True Price")
+```
+
+
+## Combined Model Prediction
+
+We build the prediction for our combined prediction model by taking an average of the predictions of the individual models, weighted by the relative correlation strength of each model.
+
+```{r}
+# Correlations
+RF_Cor <- cor(House_Prices$`Random Forest`,House_Prices$`True Price`)
+ANN_Cor <- cor(House_Prices$ANN,House_Prices$`True Price`)
+SVM_Cor <- cor(House_Prices$SVM,House_Prices$`True Price`)
+kNN_Cor <- cor(House_Prices$kNN,House_Prices$`True Price`)
+
+# Sum of Correlations
+SUM_Of_Cor <- RF_Cor + ANN_Cor + SVM_Cor + kNN_Cor
+
+# Weights
+RF_Weight <- RF_Cor / SUM_Of_Cor
+ANN_Weight <- ANN_Cor / SUM_Of_Cor
+SVM_Weight <- SVM_Cor / SUM_Of_Cor
+kNN_Weight <- kNN_Cor / SUM_Of_Cor
+
+# Taking the weighted average of predictions
+House_Prices[,"Weighted Average"] <- House_Prices$`Random Forest` * RF_Weight + House_Prices$ANN * ANN_Weight + House_Prices$SVM * SVM_Weight + House_Prices$kNN * kNNWeight
+```
+
+
+## Combined Model Results
+
+```{r}
+cor(House_Prices$`Weighted Average`, House_Prices$`True Price`)
+```
+
+
+
+# Constructing the Final Prediction for the Kaggle Competition
+
+In this chapter, we use the model that produced the best accuracy, **which is our xxxxxx model**, to predict the prices for the Ames, Iowa houses listed in the Test Data file provided in Kaggle (test.csv / rawHouseData_Test). We then create a submission file based on those predictions with which to take part in the Kaggle Competition.
+
+
+## Constructing the Final Prediction
+
+
+## Creating the Submission File
+
+
+
+# Conclusion
+
+Our objective was to predict Ames, Iowa property prices using machine learning models. As a base for our work we used an incredible Ames Housing Dataset.
+
+Before creating our models, we did some data cleaning. Firstly, we handled all NAs in the dataset accordingly and used the Boruta Package to identify important variables in the dataset. Furthermore, we used linear and stepwise regressions to take a basic look on the significant variables effecting house prices. 
+  
+Based on the cleaned data, we then went on and built four different predictive models, including a Random Forest Model, an Artificial Neural Network Model, a Support Vector Machine Model, and a k-Nearest-Neighbors Model. Out of the predictions of the four models, the predictions produced with the Random Forest Model had the highest correlation with the actual house prices listed in our Test Dataset. The correlation between the Random Forest Predictions and actual house prices was `r round(cor(House_Prices$`Random Forest`,House_Prices$`True Price`), digits = 3)`.
+
+The other models also performed fairly well. The SVM Model was the second most accurate. The correlation between the predictions made with the SVM Model and the actual house prices was `r round(cor(House_Prices$SVM,House_Prices$`True Price`), digits = 3)` Furthermore, the correlations between the predictions made by the ANN Model and the kNN Model and the actual house prices were `r round(cor(House_Prices$ANN,House_Prices$`True Price`), digits = 3)` and `r round(cor(House_Prices$kNN,House_Prices$`True Price`), digits = 3)` respectively.
+  
+After creating the four individual models, we still thought that we could improve our predictions by obtaining a correlation-weighted average of the predictions of the individual models, since the combined model would then be trained across multiple mechanisms. The correlation between the price predictions made with our combined model and the actual house prices was `r cor(House_Prices$`Weighted Average`, House_Prices$`True Price`)`. This correlation (accuracy) was ... **needs to be continued based on the results**
+
+Finally, we used our best model, **xxxxxxx Model**,  to predict the prices for Ames, Iowa houses listed in a specific testing dataset provided in Kaggle and created a submission file including the predictions. We will submit that file to the Kaggle Competition that is based on the Ames Housing Dataset we have worked on.
+
+
 
 
 
