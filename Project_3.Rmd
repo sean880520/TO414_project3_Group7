@@ -1,7 +1,7 @@
 ---
 title: "Project 3: The Ames Housing Dataset"
 author: "Sean Tsai, Olli Rissanen, Kit Tsang, Ying Jie Chin, Abhinav Alluri"
-date: "4/13/2020"
+date: "4/17/2020"
 output: html_document
 ---
 
@@ -133,7 +133,7 @@ summary(cleanHouseData_Train)
 
 # Linear and Stepwise Regressions
 
-In this section, we conduct Linear and Stewise Regressions to explore variable significance.
+In this section, we conduct Linear and Stepwise Regressions to explore variable signifigance.
 
 
 ## Building a Linear Regression
@@ -254,6 +254,7 @@ library(randomForest)
 
 
 ### Renaming Train and Test Data for Clarity
+
 ```{r}
 RF_HouseData_Train <- OG_HouseData_Train
 RF_HouseData_Test <- OG_HouseData_Test
@@ -261,9 +262,9 @@ RF_HouseData_Test <- OG_HouseData_Test
 
 ### Creating the Random Forest Model
 
-To decide the variable combination used in the Random Forest Model, we tested 2 possible combinations of variables. The first combination of variables will simply include all variables in RF_HouseData_Train, which includes all the variables deemed as important by Boruta. The second combination of variables will include all the significant variables with p value lower than 0.05 from the final stepwise regression model. The reason for taking the variables from the final stepwise regression model is because the final stepwise regression model is the most optimised with the lowest AIC. 
+To decide the variable combination used in the Random Forest Model, we tested 2 different variable combinations. The first combination of variables included all variables in RF_HouseData_Train, which includes all the variables deemed as important by Boruta. The second combination of variables included all the significant variables with a p-value lower than 0.05 from the final stepwise regression model. We used the significant variables from the final stepwise regression model instead of the significant variables from our first linear regression model because the stepwise regression model was more optimimized with a lower AIC.
 
-In our code, we have chosen to only show the second combination of variables from stepwise regression as it produces the highest accuracy, which was measured by the strength of correlation. 
+Using only the significant variables from the stepwise regression produced the better accuracy out of the two options (measured by the strength of correlation between the predicted house prices and the actual house prices listed in the test part of the data) and, thus that combination of variables was chosen for our Random Forest Model. 
 
 ```{r}
 set.seed(300)
@@ -275,6 +276,7 @@ RF_Model <- randomForest(SalePrice ~ MSZoning + LotFrontage + LotArea + LotShape
     KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + 
     GarageQual + GarageCond + WoodDeckSF + SaleCondition, data = RF_HouseData_Train)
 
+# Basic information about the model
 RF_Model
 
 # Plotting the Random Forest Model
@@ -285,11 +287,13 @@ plot(RF_Model)
 
 ```{r}
 RF_Prediction <- predict(RF_Model, RF_HouseData_Test, type = "response")
-RF_Prediction_DataFrame <- data.frame(RF_Prediction,RF_HouseData_Test$SalePrice)
 cor(RF_Prediction,RF_HouseData_Test$SalePrice)
 ```
 
-There is a strong correlation of `r cor(RF_Prediction,RF_HouseData_Test$SalePrice), digits = 3)` between the house prices predicted by the Random Forest Model and actual prices. This implies a good prediction and that the predicted prices follow a similar trend with the real prices. This, compared to the correlation when when all the variables from Boruta screening were used, is higher by 0.0006432.
+There is a strong correlation of `r cor(RF_Prediction,RF_HouseData_Test$SalePrice), digits = 3)` between the house prices predicted by the Random Forest Model and actual prices. This implies a good prediction and that the predicted prices follow a similar trend with the real prices. Compared to the correlation achieved when when all the variables from the Boruta screening were used, the achieved correlation with this set of variables is higher by approximately 0.0006.
+
+
+## ANN Model
 
 ### Importing the required libraries
 
@@ -307,7 +311,7 @@ ANN_HouseData_Test <- Norm_HouseData_Test
 
 ### Creating the ANN Model
 
-In creating the ANN Model, we also experimented with the same 2 variable combinations as described above. The code below shows the final ANN model with the highest accuracy, using only the significant variables from stepwise linear regression.
+In creating the ANN Model, we experimented with the same 2 variable combinations as described above for the Random Forest Model. Again, the best accuracy was achieved using only the significant variables from the stepwise regression. Thus, our final ANN Model uses that combination of variables.
 
 ```{r}
 set.seed(300)
@@ -327,7 +331,7 @@ ANN_Prediction <- predict(ANN_Model, newdata=ANN_HouseData_Test[,!names(ANN_Hous
 cor(ANN_Prediction, ANN_HouseData_Test$SalePrice)
 ```
 
-The ANN Model predictions and actual house prices have a correlation of `r round(cor(ANN_Prediction, ANN_HouseData_Test$SalePrice), digits = 3)`. This correlation was obtained using only the significant variables from the stepwise regression and is 0.0370928 higher than the correlation obtained when all the variables from Boruta screening was used.
+The ANN Model predictions and actual house prices have a correlation of `r round(cor(ANN_Prediction, ANN_HouseData_Test$SalePrice), digits = 3)`. This correlation is approximately 0.037 higher than the correlation obtained when all the variables from Boruta screening were used.
 
 
 ## Support Vector Regression Model
