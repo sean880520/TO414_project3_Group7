@@ -290,7 +290,7 @@ RF_Prediction <- predict(RF_Model, RF_HouseData_Test, type = "response")
 cor(RF_Prediction,RF_HouseData_Test$SalePrice)
 ```
 
-There is a strong correlation of `r cor(RF_Prediction,RF_HouseData_Test$SalePrice), digits = 3)` between the house prices predicted by the Random Forest Model and actual prices. This implies a good prediction and that the predicted prices follow a similar trend with the real prices. Compared to the correlation achieved when when all the variables from the Boruta screening were used, the achieved correlation with this set of variables is higher by approximately 0.0006.
+There is a strong correlation of `r round(cor(RF_Prediction,RF_HouseData_Test$SalePrice), digits = 3)` between the house prices predicted by the Random Forest Model and actual prices. This implies a good prediction and that the predicted prices follow a similar trend with the real prices. Compared to the correlation achieved when when all the variables from the Boruta screening were used, the achieved correlation with this set of variables is higher by approximately 0.0006.
 
 
 ## ANN Model
@@ -467,34 +467,89 @@ The house prices predicted by our combined model and the actual house prices hav
 
 
 
-# Constructing the Final Prediction for the Kaggle Competition
-
-In this chapter, we use the model that produced the best accuracy, **which is our xxxxxx model**, to predict the prices for the Ames, Iowa houses listed in the Test Data file provided in Kaggle (test.csv / rawHouseData_Test). We then create a submission file based on those predictions with which to take part in the Kaggle Competition.
-
-
-## Constructing the Final Prediction
-
-
-## Creating the Submission File
-
-
-
 # Conclusion
 
 Our objective was to predict Ames, Iowa property prices using machine learning models. As a base for our work we used an incredible Ames Housing Dataset.
 
 Before creating our models, we did some data cleaning. Firstly, we handled all NAs in the dataset accordingly and used the Boruta Package to identify important variables in the dataset. Furthermore, we used linear and stepwise regressions to take a basic look on the significant variables effecting house prices. 
   
-Based on the cleaned data, we then went on and built four different predictive models, including a Random Forest Model, an Artificial Neural Network Model, a Support Vector Machine Model, and a k-Nearest-Neighbors Model. Out of the predictions of the four models, the predictions produced with the SVR Model had the highest correlation with the actual house prices listed in our Test Dataset. The correlation between the SVR Model Predictions and actual house prices was `r round(SVR_Cor, digits = 4)`.
+Based on the cleaned data, we then went on and built four different predictive models, including a Random Forest Model, an Artificial Neural Network Model, a Support Vector Machine Model, and a k-Nearest-Neighbors Model. **Out of the predictions of the four models, the predicted prices produced with the SVR Model had the highest correlation with the actual house prices listed in our Test Dataset. The correlation between the SVR Model Predictions and the actual house prices was `r round(SVR_Cor, digits = 4)`.**
 
-The other models also performed fairly well. The Random Forest Model was the second most accurate. The correlation between the predictions made with the SVR Model and the actual house prices was `r round(RF_Cor, digits = 4)` Furthermore, the correlations between the predictions made by the ANN Model and the kNN Model and the actual house prices were `r round(ANN_Cor, digits = 4)` and `r round(kNN_Cor, digits = 4)` respectively.
+**The other models also performed fairly well. The Random Forest Model was the second most accurate. The correlation between the predictions made with the SVR Model and the actual house prices was `r round(RF_Cor, digits = 4)` Furthermore, the correlations between the predictions made by the ANN Model and the kNN Model and the actual house prices were `r round(ANN_Cor, digits = 4)` and `r round(kNN_Cor, digits = 4)` respectively.**
   
-After creating the four individual models, we still thought that we could improve our predictions by obtaining a correlation-weighted average of the predictions of the individual models, since the combined model would then be trained across multiple mechanisms. The correlation between the price predictions made with our combined model and the actual house prices was `r round(CombinedModel_Cor, digits = 4)`. This correlation (accuracy) was ... **needs to be continued based on the results**
+After creating the four individual models, we still thought that we could improve our predictions by obtaining **a correlation-weighted average of the predictions** of the individual models to create a combined prediction model that would then be trained across multiple mechanisms. **The correlation between the price predictions made with our combined model and the actual house prices was `r round(CombinedModel_Cor, digits = 4)`. This correlation (accuracy) was the second best between all the models.** 
 
-Finally, we used our best model, **xxxxxxx Model**,  to predict the prices for Ames, Iowa houses listed in a specific testing dataset provided in Kaggle and created a submission file including the predictions. We will submit that file to the Kaggle Competition that is based on the Ames Housing Dataset we have worked on.
+Finally, we use our best model, **the SVR Model**,  to predict the prices for Ames, Iowa houses listed in a specific testing dataset provided in Kaggle (test.csv / rawHouseData_Test) and to create a submission file including the predictions. We will submit that file to the Kaggle Competition that is based on the Ames Housing Dataset.
 
 
+## Constructing the Final Prediction for the Kaggle Competition
 
+### Cleaning the Test Data
+
+We have to clean the Test Data in a similar fashion than what we did with the Train Data in the beginning of the file.
+
+#### Converting Data into Characters for Data Cleaning
+
+```{r}
+# We need to use characters for our Boruta Screening of features
+CharCategory <- c(names(Filter(is.character, rawHouseData_Test)), "MSSubClass")
+```
+
+#### Removing and Imputing NAs
+
+```{r}
+# Dropping the GarageYrBlt column - imputing NAs with year = 0 might affect regression and other garage variables exist
+rawHouseData_Test <- rawHouseData_Test[,!names(rawHouseData_Test)=="GarageYrBlt"] 
+
+# Imputing NAs in MasVnrArea with 0
+rawHouseData_Test$MasVnrArea <- ifelse(is.na(rawHouseData_Test$MasVnrArea) == TRUE, 0, rawHouseData_Test$MasVnrArea)
+
+# Imputing NAs by "Missing" for characters for the rest of the columns (i.e. e.g. PoolQC, MiscFeature, Alley), where NA means that attribute does not exist
+for(i in CharCategory){
+  rawHouseData_Train[,i] = ifelse(is.na(rawHouseData_Train[,i]), "Missing", rawHouseData_Train[,i])
+  rawHouseData_Test[,i] = ifelse(is.na(rawHouseData_Test[,i]), "Missing", rawHouseData_Test[,i])
+}
+
+# Imputing the NAs for Lot Frontage using predictive mean matching 
+rawHouseData_Test <- mice(rawHouseData_Test, m=5, maxit = 50, method = 'pmm', seed = 100)
+rawHouseData_Test <- mice::complete(rawHouseData_Test)
+```
+
+#### Further Cleaning with Boruta Training
+
+```{r}
+# Importing the required library
+library(Boruta)
+
+# Executing Boruta Training
+set.seed(233)
+boruta_Train2 <- Boruta(rawHouseData_Test[names(rawHouseData_Test) != "Id" & names(rawHouseData_Test) != "SalePrice" ], rawHouseData_Test$SalePrice ,  doTrace = 2)
+final.boruta2 <- TentativeRoughFix(boruta_Train2)
+print(final.boruta2)
+plot(final.boruta2)
+
+# Selecting only the features that passed the Boruta Screening
+cleanHouseData_Test <- rawHouseData_Test[getSelectedAttributes(final.boruta2, withTentative = F)]
+
+# Converting characters back into factors
+cleanHouseData_Test[sapply(cleanHouseData_Test,is.character)] <- lapply(cleanHouseData_Test[sapply(cleanHouseData_Test,is.character)], as.factor)
+
+# Adding SalePrice back into the train data
+cleanHouseData_Test$SalePrice <- rawHouseData_Test$SalePrice
+```
+
+### Constructing the Final Prediction
+
+```{r}
+Final_Kaggle_Prediction <- predict(SVR_Model, clean_HouseData_Test)
+```
+
+
+### Creating the Submission File
+
+```{r}
+
+```
 
 
 
