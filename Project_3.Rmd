@@ -156,7 +156,8 @@ summary(SalePrice_LinReg)
 library(MASS)
 
 # Creating the regression
-SalePrice_StepReg = stepAIC(SalePrice_LinReg, direction = "both")
+SalePrice_StepReg = stepAIC(SalePrice_LinReg, direction = "both", trace = FALSE)
+
 ```
 
 ### Summary of the Stepwise Regression Performance
@@ -223,8 +224,8 @@ testID <- setdiff(1:nrow(cleanHouseData_Train), trainID)
 Here we divide the original cleaned data (i.e. cleanHouseData_Train) to Train and Test parts to be used in our Random Forest and SVM Models.
 
 ```{r}
-OG_HouseData_Train <- cleanHouseData_Train[trainId,]
-OG_HouseData_Test <- cleanHouseData_Train[testId,]
+OG_HouseData_Train <- cleanHouseData_Train[trainID,]
+OG_HouseData_Test <- cleanHouseData_Train[testID,]
 ```
 
 
@@ -233,8 +234,8 @@ OG_HouseData_Test <- cleanHouseData_Train[testId,]
 Here we divide the normalized data into Train and Test parts to be used in our ANN and kNN Models.
 
 ```{r}
-Norm_HouseData_Train <- Norm_HouseData[train_id,]
-Norm_HouseData_Test <- Norm_HouseData[test_id,]
+Norm_HouseData_Train <- Norm_HouseData[trainID,]
+Norm_HouseData_Test <- Norm_HouseData[testID,]
 ```
 
 
@@ -251,8 +252,8 @@ library(caret)
 library(randomForest)
 ```
 
-### Renaming Train and Test Data for Clarity
 
+### Renaming Train and Test Data for Clarity
 ```{r}
 RF_HouseData_Train <- OG_HouseData_Train
 RF_HouseData_Test <- OG_HouseData_Test
@@ -282,7 +283,8 @@ cor(RF_Prediction,RF_HouseData_Test$SalePrice)
 There is a strong correlation of `r cor(RF_Prediction,RF_HouseData_Test$SalePrice), digits = 3)` between the house prices predicted by the Random Forest Model and actual prices. This implies a good prediction and that the predicted prices follow a similar trend with the real prices. 
 
 
-## ANN Model
+We will then go on and evaluate more other models and compare the results.
+
 
 ### Importing the required libraries
 
@@ -342,6 +344,7 @@ SVM_HouseData_Test <- OG_HouseData_Test
 For the SVM Model we tested not only the different variable combinations, but also different kernels. **The kernels tested were rbfdot and vanilladot. Using all the variables that were left after data cleaning and the rbfdot kernel produced the best accuracy, so those have been chosen for our final SVM Model.** 
 
 ```{r}
+
 # Constructing SVM Model 1
 SVM_Model <- ksvm(SalePrice ~ ., data = SVM_HouseData_Train,
                           kernel = "rbfdot")
@@ -367,15 +370,19 @@ The SVM Model predictions and actual house prices have a correlation of `r round
 ```{r}
 kNN_HouseData_Train <- Norm_HouseData
 kNN_HouseData_Test <- Norm_HouseData
+
 ```
 
 ### Creating the kNN Model
 
 For kNN Model, we once again tested the same potential variable combinations. Using xxxxxx seemed to produce the best accuracy and, thus was chosen for our final kNN Model.
 
+
 ```{r}
 # Training Control using a repeated 10-fold cross-validation to find the optimal k-value
+
 trControl <- trainControl(method = 'repeatedcv',number = 10, repeats = 3)
+```
 
 # Creating the model
 set.seed(333)
@@ -448,7 +455,15 @@ House_Prices[,"Weighted Average"] <- House_Prices$`Random Forest` * RF_Weight + 
 cor(House_Prices$`Weighted Average`, House_Prices$`True Price`)
 ```
 
+## Conclusion
 
+Our original objective of our group was to predict the housing prices of IOWA based on machine learning models. Firstly, we used the Boruta package to identify important variables in the dataset. Also, we used linear regression to have a quick glance on significant variables. 
+  
+Based on that, we then went on and built four different models including Random Forest, Artificial Neural Network, Support Vector Regression, and K-nearest-neighbors.  
+  
+Out of the four models, the model with the highest correlation of `r cor(predResults$`Random Forest`,predResults$`True Price`)` with the testing set was random forest. This is followed by SVM's `r cor(predResults$SVM,predResults$`True Price`)`, ANN's `r cor(predResults$ANN,predResults$`True Price`)`and KNN's `r cor(predResults$KNN,predResults$`True Price`)` in correlation.   
+  
+We believe that our rigor of the models can be improved by obtaining a weighted-average of each of the individual models, since it was trained across multiple mechanisms. The correlation of our combined model was `r cor(predResults$`Weighted Average`, predResults$`True Price`)`.
 
 # Constructing the Final Prediction for the Kaggle Competition
 
