@@ -1,7 +1,7 @@
 ---
 title: "Project 3: The Ames Housing Dataset"
 author: "Sean Tsai, Olli Rissanen, Kit Tsang, Ying Jie Chin, Abhinav Alluri"
-date: "4/13/2020"
+date: "4/17/2020"
 output: html_document
 ---
 
@@ -133,7 +133,7 @@ summary(cleanHouseData_Train)
 
 # Linear and Stepwise Regressions
 
-In this section, we conduct Linear and Stewise Regressions to explore variable significance.
+In this section, we conduct Linear and Stepwise Regressions to explore variable signifigance.
 
 
 ## Building a Linear Regression
@@ -254,6 +254,7 @@ library(randomForest)
 
 
 ### Renaming Train and Test Data for Clarity
+
 ```{r}
 RF_HouseData_Train <- OG_HouseData_Train
 RF_HouseData_Test <- OG_HouseData_Test
@@ -261,9 +262,9 @@ RF_HouseData_Test <- OG_HouseData_Test
 
 ### Creating the Random Forest Model
 
-To decide the variable combination used in the Random Forest Model, we tested 2 possible combinations of variables. The first combination of variables will simply include all variables in RF_HouseData_Train, which includes all the variables deemed as important by Boruta. The second combination of variables will include all the significant variables with p value lower than 0.05 from the final stepwise regression model. The reason for taking the variables from the final stepwise regression model is because the final stepwise regression model is the most optimised with the lowest AIC. 
+To decide the variable combination to use in the Random Forest Model, we tested 2 different variable combinations. The first combination of variables included all variables in RF_HouseData_Train, which includes all the variables deemed as important by Boruta. The second combination of variables included all the significant variables with a p-value lower than 0.05 from the final Stepwise Regression. We used the significant variables from the final Stepwise Regression model instead of the significant variables from our first Linear Regression model because the Stepwise Regression model was more optimimized with a lower AIC.
 
-In our code, we have chosen to only show the second combination of variables from stepwise regression as it produces the highest accuracy, which was measured by the strength of correlation. 
+Using only the significant variables from the Stepwise Regression produced the better accuracy out of the two options (measured by the strength of correlation between the predicted house prices and the actual house prices listed in the test part of the data) and, thus that combination of variables is chosen for our Random Forest Model. 
 
 ```{r}
 set.seed(300)
@@ -275,6 +276,7 @@ RF_Model <- randomForest(SalePrice ~ MSZoning + LotFrontage + LotArea + LotShape
     KitchenQual + TotRmsAbvGrd + Functional + Fireplaces + GarageCars + 
     GarageQual + GarageCond + WoodDeckSF + SaleCondition, data = RF_HouseData_Train)
 
+# Basic information about the model
 RF_Model
 
 # Plotting the Random Forest Model
@@ -285,11 +287,13 @@ plot(RF_Model)
 
 ```{r}
 RF_Prediction <- predict(RF_Model, RF_HouseData_Test, type = "response")
-RF_Prediction_DataFrame <- data.frame(RF_Prediction,RF_HouseData_Test$SalePrice)
 cor(RF_Prediction,RF_HouseData_Test$SalePrice)
 ```
 
-There is a strong correlation of `r cor(RF_Prediction,RF_HouseData_Test$SalePrice), digits = 3)` between the house prices predicted by the Random Forest Model and actual prices. This implies a good prediction and that the predicted prices follow a similar trend with the real prices. This, compared to the correlation when when all the variables from Boruta screening were used, is higher by 0.0006432.
+There is a strong correlation of `r round(cor(RF_Prediction,RF_HouseData_Test$SalePrice), digits = 3)` between the house prices predicted by the Random Forest Model and actual prices. This implies a good prediction and that the predicted prices follow a similar trend with the real prices. Compared to the correlation achieved when when all the variables from the Boruta screening were used, the achieved correlation with this set of variables is higher by approximately 0.0006.
+
+
+## ANN Model
 
 ### Importing the required libraries
 
@@ -307,7 +311,7 @@ ANN_HouseData_Test <- Norm_HouseData_Test
 
 ### Creating the ANN Model
 
-In creating the ANN Model, we also experimented with the same 2 variable combinations as described above. The code below shows the final ANN model with the highest accuracy, using only the significant variables from stepwise linear regression.
+In creating the ANN Model, we experimented with the same 2 variable combinations as described above for the Random Forest Model. Again, the best accuracy was achieved using only the significant variables from the Stepwise Regression. Thus, our final ANN Model uses that combination of variables.
 
 ```{r}
 set.seed(300)
@@ -327,10 +331,10 @@ ANN_Prediction <- predict(ANN_Model, newdata=ANN_HouseData_Test[,!names(ANN_Hous
 cor(ANN_Prediction, ANN_HouseData_Test$SalePrice)
 ```
 
-The ANN Model predictions and actual house prices have a correlation of `r round(cor(ANN_Prediction, ANN_HouseData_Test$SalePrice), digits = 3)`. This correlation was obtained using only the significant variables from the stepwise regression and is 0.0370928 higher than the correlation obtained when all the variables from Boruta screening was used.
+The ANN Model predictions and the actual house prices have a correlation of `r round(cor(ANN_Prediction, ANN_HouseData_Test$SalePrice), digits = 3)`. This correlation is approximately 0.037 higher than the correlation obtained when all the variables from Boruta Screening were used.
 
 
-## Support Vector Regression Model
+## SVR Model
 
 ### Importing the required library
 
@@ -347,12 +351,12 @@ SVR_HouseData_Test <- OG_HouseData_Test
 
 ### Creating the SVR Model
 
-For the SVR Model, we first used all the variables from Boruta screening to construct the SVR model and optimise for the best kernel. Next, using the kernel with the highest accuracy, we tested the 2 variable combinations as mentioned above. 
+To decide the final form of our Support Vector Regression Model, we went through a two-step experimentation process. First we used all the variables that passed the Boruta Screening and tested how the SVR Model performs with different kernels to find the optimal kernel for the model. The tested kernels were rbfdot, vanilladot, tanhdot and polydot. The highest correlation between predicted and actual house prices was achieved using the rbfdot kernel.
 
-The model shown below is the model which has the highest accuracy or correlation strength with the test data, using variables from Boruta screening and the rbfdot kernel. We have previously tested other kernels including vanilladot, tanhdot and polydot. However, all of these had lower correlation strength with the test data, with correlation at 0.8414073, -0.02670659 and 0.8414184 respectively. 
+In the second step, we tested if it improves the accuracy to use only the significant variables from the Stepwise Regression with the rbfdot kernel and found out that it does not - the better accuracy is achieved by using all the variables that passed the Boruta Screening. The achieved correlation between the predicted and actual house prices was approximately 0.003 better for the model that uses all the variables that passed the Boruta Screening and, thus that combination of variables is used in our final SVR Model.
 
 ```{r}
-# Constructing SVR Model with variables from Boruta screening
+# Constructing an SVR Model with all variables that passed the Boruta Screening
 set.seed(300)
 SVR_Model <- ksvm(SalePrice ~ ., data = SVR_HouseData_Train,
                           kernel = "rbfdot")
@@ -368,47 +372,21 @@ SVR_Prediction <- predict(SVR_Model, SVR_HouseData_Test)
 cor(SVR_Prediction, SVR_HouseData_Test$SalePrice)
 ```
 
-With the Boruta screening variables, the SVR Model prediction (using the rbfdot kernel) and actual house prices have a correlation of `r round(cor(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)`, which is much higher than the other 3 kernels. 
-
-Having optimised our model for the kernel, we now go on to find out if the 2nd variable combination using only significant variables from the stepwise regression would have a higher accuracy.
-
-### Creating SVR Model 2 using significant variables from Stepwise Linear Regression
-
-```{r}
-# Constructing SVR Model 2 with significant variables from stepwise linear regression
-set.seed(300)
-SVR_Model2 <- ksvm(SalePrice ~ Neighborhood + HouseStyle + MasVnrArea + FullBath + MSZoning + Exterior1st + BsmtFinType1 + X2ndFlrSF + BedroomAbvGr + TotRmsAbvGrd + Functional + LotFrontage + LandContour + LandSlope + Condition1 + YearBuilt + ExterQual + KitchenAbvGr + KitchenQual + Fireplaces + WoodDeckSF + SaleCondition + LotArea + LotShape + BldgType + OverallQual + OverallCond + BsmtQual + GrLivArea + BsmtFullBath + KitchenQual + + GarageCars + GarageQual + GarageCond, data = SVR_HouseData_Train,
-                          kernel = "rbfdot")
-```
-
-### SVR Model 2 Prediction and Results
-
-```{r}
-# SVR Model Prediction
-SVR_Prediction2 <- predict(SVR_Model2, SVR_HouseData_Test)
-
-# SVR Model Results
-cor(SVR_Prediction2, SVR_HouseData_Test$SalePrice)
-```
-
-From the results above, it was found that the SVR model which used Boruta screening performed better, with a higher correlation of `r round(cor(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)` compared to the SVR model with a correlation of `r round(cor(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)`. Thus, for SVR, we will be choosing the first SVR model with all the Boruta variables as our final SVR model.
+The house prices predicted by the SVR Model that uses all the variables that passed the Boruta Screening and the rbfdot kernel, and the actual house prices have a correlation of `r round(cor(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)`.
 
 
-
-## KNN Model
+## kNN Model
 
 ### Renaming Train and Test Data for Clarity
 
 ```{r}
 kNN_HouseData_Train <- Norm_HouseData_Train
 kNN_HouseData_Test <- Norm_HouseData_Test
-
 ```
 
 ### Creating the kNN Model
 
-For kNN Model, we once again tested the same potential variable combinations. Using xxxxxx seemed to produce the best accuracy and, thus was chosen for our final kNN Model.
-
+For the kNN Model, we once again tested the same 2 variable combinations. Using all the variables that passed the Boruta Training seemed to produce the better accuracy and, thus that variable combination is chosen for our final kNN Model. When all the variables that passed the Boruta Training were used, the achieved correlation between the predicted and actual house prices was approximately 0.0037 higher than when only the significant variables from the Stepwise Regression were used.
 
 ```{r}
 # Training Control using a repeated 10-fold cross-validation to find the optimal k-value
@@ -439,9 +417,8 @@ cor(kNN_Prediction, kNN_HouseData_Test$SalePrice)
 
 The plot above shows the actual sale price of a house against the predicted sale price of the house. Since the plot is pretty linear - with the exception of a few outliers - and has a slope close to one, the kNN Model seems to be a quite decent model in predicting the sale price of a house. 
 
-For kNN, the model which included all the Boruta screening variables had a 0.0036874 higher accuracy compared to the model with only the significant variables from Stepwise Linear Regression, Thus, our final model would be the kNN model with all the Boruta screening variables
+The kNN Model predictions and the actual house prices have a correlation of `r round(cor(kNN_Prediction, kNN_HouseData_Test$SalePrice), digits = 3)`, which supports the indication of the plot that the kNN Model is a decent predictor for house prices. 
 
-For our final model, the kNN Model predictions and actual house prices have a correlation of `r round(cor(kNN_Prediction, kNN_HouseData_Test$SalePrice), digits = 3)` which supports the view of the kNN Model as a decent predictor for house prices seen already from the plot. 
 
 
 # Combined Prediction Model
@@ -483,19 +460,10 @@ House_Prices[,"Weighted Average"] <- House_Prices$`Random Forest` * RF_Weight + 
 ## Combined Model Results
 
 ```{r}
-CombinedModel_Cor <- cor(House_Prices$`Weighted Average`, House_Prices$`True Price`)
-CombinedModel_Cor
+cor(House_Prices$`Weighted Average`, House_Prices$`True Price`)
 ```
 
-# Constructing the Final Prediction for the Kaggle Competition
-
-In this chapter, we use the model that produced the best accuracy, **which is our xxxxxx model**, to predict the prices for the Ames, Iowa houses listed in the Test Data file provided in Kaggle (test.csv / rawHouseData_Test). We then create a submission file based on those predictions with which to take part in the Kaggle Competition.
-
-
-## Constructing the Final Prediction
-
-
-## Creating the Submission File
+The house prices predicted by our combined model and the actual house prices have a correlation of `r round(cor(House_Prices$`Weighted Average`, House_Prices$`True Price`), digits = 3)`. Our combined model beats all our other models in accuracy, besides the SVR Model, for which the correlation between predicted and actual prices was `r round(cor(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)`.
 
 
 
@@ -505,16 +473,83 @@ Our objective was to predict Ames, Iowa property prices using machine learning m
 
 Before creating our models, we did some data cleaning. Firstly, we handled all NAs in the dataset accordingly and used the Boruta Package to identify important variables in the dataset. Furthermore, we used linear and stepwise regressions to take a basic look on the significant variables effecting house prices. 
   
-Based on the cleaned data, we then went on and built four different predictive models, including a Random Forest Model, an Artificial Neural Network Model, a Support Vector Machine Model, and a k-Nearest-Neighbors Model. Out of the predictions of the four models, the predictions produced with the SVR Model had the highest correlation with the actual house prices listed in our Test Dataset. The correlation between the SVR Model Predictions and actual house prices was `r round(SVR_Cor, digits = 4)`.
+Based on the cleaned data, we then went on and built four different predictive models, including a Random Forest Model, an Artificial Neural Network Model, a Support Vector Machine Model, and a k-Nearest-Neighbors Model. **Out of the predictions of the four models, the predicted prices produced with the SVR Model had the highest correlation with the actual house prices listed in our Test Dataset. The correlation between the SVR Model Predictions and the actual house prices was `r round(SVR_Cor, digits = 4)`.**
 
-The other models also performed fairly well. The Random Forest Model was the second most accurate. The correlation between the predictions made with the SVR Model and the actual house prices was `r round(RF_Cor, digits = 4)` Furthermore, the correlations between the predictions made by the ANN Model and the kNN Model and the actual house prices were `r round(ANN_Cor, digits = 4)` and `r round(kNN_Cor, digits = 4)` respectively.
+**The other models also performed fairly well. The Random Forest Model was the second most accurate. The correlation between the predictions made with the SVR Model and the actual house prices was `r round(RF_Cor, digits = 4)` Furthermore, the correlations between the predictions made by the ANN Model and the kNN Model and the actual house prices were `r round(ANN_Cor, digits = 4)` and `r round(kNN_Cor, digits = 4)` respectively.**
   
-After creating the four individual models, we still thought that we could improve our predictions by obtaining a correlation-weighted average of the predictions of the individual models, since the combined model would then be trained across multiple mechanisms. The correlation between the price predictions made with our combined model and the actual house prices was `r round(CombinedModel_Cor, digits = 4)`. This correlation (accuracy) was ... **needs to be continued based on the results**
+After creating the four individual models, we still thought that we could improve our predictions by obtaining **a correlation-weighted average of the predictions** of the individual models to create a combined prediction model that would then be trained across multiple mechanisms. **The correlation between the price predictions made with our combined model and the actual house prices was `r round(CombinedModel_Cor, digits = 4)`. This correlation (accuracy) was the second best between all the models.** 
 
-Finally, we used our best model, **xxxxxxx Model**,  to predict the prices for Ames, Iowa houses listed in a specific testing dataset provided in Kaggle and created a submission file including the predictions. We will submit that file to the Kaggle Competition that is based on the Ames Housing Dataset we have worked on.
+Finally, we use our best model, **the SVR Model**,  to predict the prices for Ames, Iowa houses listed in a specific testing dataset provided in Kaggle (test.csv / rawHouseData_Test) and to create a submission file including the predictions. We will submit that file to the Kaggle Competition that is based on the Ames Housing Dataset.
 
 
+## Constructing the Final Prediction for the Kaggle Competition
 
+### Cleaning the Test Data
+
+We have to clean the Test Data in a similar fashion than what we did with the Train Data in the beginning of the file.
+
+#### Converting Data into Characters for Data Cleaning
+
+```{r}
+# We need to use characters for our Boruta Screening of features
+CharCategory <- c(names(Filter(is.character, rawHouseData_Test)), "MSSubClass")
+```
+
+#### Removing and Imputing NAs
+
+```{r}
+# Dropping the GarageYrBlt column - imputing NAs with year = 0 might affect regression and other garage variables exist
+rawHouseData_Test <- rawHouseData_Test[,!names(rawHouseData_Test)=="GarageYrBlt"] 
+
+# Imputing NAs in MasVnrArea with 0
+rawHouseData_Test$MasVnrArea <- ifelse(is.na(rawHouseData_Test$MasVnrArea) == TRUE, 0, rawHouseData_Test$MasVnrArea)
+
+# Imputing NAs by "Missing" for characters for the rest of the columns (i.e. e.g. PoolQC, MiscFeature, Alley), where NA means that attribute does not exist
+for(i in CharCategory){
+  rawHouseData_Train[,i] = ifelse(is.na(rawHouseData_Train[,i]), "Missing", rawHouseData_Train[,i])
+  rawHouseData_Test[,i] = ifelse(is.na(rawHouseData_Test[,i]), "Missing", rawHouseData_Test[,i])
+}
+
+# Imputing the NAs for Lot Frontage using predictive mean matching 
+rawHouseData_Test <- mice(rawHouseData_Test, m=5, maxit = 50, method = 'pmm', seed = 100)
+rawHouseData_Test <- mice::complete(rawHouseData_Test)
+```
+
+#### Further Cleaning with Boruta Training
+
+```{r}
+# Importing the required library
+library(Boruta)
+
+# Executing Boruta Training
+set.seed(233)
+boruta_Train2 <- Boruta(rawHouseData_Test[names(rawHouseData_Test) != "Id" & names(rawHouseData_Test) != "SalePrice" ], rawHouseData_Test$SalePrice ,  doTrace = 2)
+final.boruta2 <- TentativeRoughFix(boruta_Train2)
+print(final.boruta2)
+plot(final.boruta2)
+
+# Selecting only the features that passed the Boruta Screening
+cleanHouseData_Test <- rawHouseData_Test[getSelectedAttributes(final.boruta2, withTentative = F)]
+
+# Converting characters back into factors
+cleanHouseData_Test[sapply(cleanHouseData_Test,is.character)] <- lapply(cleanHouseData_Test[sapply(cleanHouseData_Test,is.character)], as.factor)
+
+# Adding SalePrice back into the train data
+cleanHouseData_Test$SalePrice <- rawHouseData_Test$SalePrice
+```
+
+### Constructing the Final Prediction
+
+```{r}
+Final_Kaggle_Prediction <- predict(SVR_Model, clean_HouseData_Test)
+```
+
+
+### Creating the Submission File
+
+```{r}
+
+```
 
 
 
