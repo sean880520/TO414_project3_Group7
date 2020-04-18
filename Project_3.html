@@ -369,15 +369,45 @@ summary {
 </div>
 
 
-<div id="description-of-the-data-and-our-project" class="section level1">
-<h1>Description of the Data and our Project</h1>
+<div id="table-of-contents" class="section level1">
+<h1>Table of Contents</h1>
+<div id="description-of-the-data-and-our-project" class="section level4">
+<h4>1. Description of the Data and our Project</h4>
+</div>
+<div id="general-data-exploration" class="section level4">
+<h4>2. General Data Exploration</h4>
+</div>
+<div id="data-cleaning" class="section level4">
+<h4>3. Data Cleaning</h4>
+</div>
+<div id="linear-and-stepwise-regressions" class="section level4">
+<h4>4. Linear and Stepwise Regressions</h4>
+</div>
+<div id="creating-a-normalized-version-of-the-data" class="section level4">
+<h4>5. Creating a Normalized Version of the Data</h4>
+</div>
+<div id="dividing-data-into-train-and-test-parts" class="section level4">
+<h4>6. Dividing Data into Train and Test Parts</h4>
+</div>
+<div id="individual-predictive-models" class="section level4">
+<h4>7. Individual Predictive Models</h4>
+</div>
+<div id="combined-prediction-models" class="section level4">
+<h4>8. Combined Prediction Models</h4>
+</div>
+<div id="conclusion" class="section level4">
+<h4>9. Conclusion</h4>
+</div>
+</div>
+<div id="description-of-the-data-and-our-project-1" class="section level1">
+<h1>1. Description of the Data and our Project</h1>
 <p>The Ames Housing Dataset is an incredible dataset with 79 explanatory variables describing almost every aspect of residential homes in Ames, Iowa, a city that serves as a home for the Iowa State University and has a population of around 60,000.</p>
 <p>The 79 variables focus on the quality and quantity of many physical attributes of the properties, and most of the variables are exactly the type of information that a typical home buyer wants to know about a potential property. There are variables about various area dimensions (such as lot size and different square footage variables), discrete variables that describe the number of items (e.g. bathrooms) occurring within the house, and categorical variables classifying e.g. streets and neighborhoods.</p>
 <p>With the dataset and based on the listed variables, we aim to predict sale prices of different Ames, Iowa properties using different machine learning models. For our predictions, we plan to use ANN, kNN, SVR, and Random Forest models, as well as a prediction model that combines all these four models.</p>
 <p>Besides submitting this file as our Project 3 deliverable, we will make our final predictions on a special testing dataset provided in Kaggle and use those predictions to participate in a Kaggle Competition that is based on the Ames Housing Dataset.</p>
 </div>
-<div id="general-data-exploration" class="section level1">
-<h1>General Data Exploration</h1>
+<div id="general-data-exploration-1" class="section level1">
+<h1>2. General Data Exploration</h1>
 <div id="importing-train-data" class="section level2">
 <h2>Importing Train Data</h2>
 <pre class="r"><code>rawHouseData_Train &lt;- read.csv(&quot;train.csv&quot;, stringsAsFactors = FALSE)</code></pre>
@@ -638,8 +668,8 @@ summary {
 ## </code></pre>
 </div>
 </div>
-<div id="data-cleaning" class="section level1">
-<h1>Data Cleaning</h1>
+<div id="data-cleaning-1" class="section level1">
+<h1>3. Data Cleaning</h1>
 <div id="converting-data-into-characters-for-data-cleaning" class="section level2">
 <h2>Converting Data into Characters for Data Cleaning</h2>
 <pre class="r"><code># We need to use characters for our Boruta Screening of features
@@ -1067,14 +1097,14 @@ boruta_Train &lt;- Boruta(rawHouseData_Train[names(rawHouseData_Train) != &quot;
 <pre><code>##  16. run of importance source...</code></pre>
 <pre><code>##  17. run of importance source...</code></pre>
 <pre><code>##  18. run of importance source...</code></pre>
-<pre><code>## After 18 iterations, +1.5 mins:</code></pre>
+<pre><code>## After 18 iterations, +1.8 mins:</code></pre>
 <pre><code>##  confirmed 2 attributes: Electrical, Exterior2nd;</code></pre>
 <pre><code>##  rejected 1 attribute: SaleType;</code></pre>
 <pre><code>##  still have 18 attributes left.</code></pre>
 <pre><code>##  19. run of importance source...</code></pre>
 <pre><code>##  20. run of importance source...</code></pre>
 <pre><code>##  21. run of importance source...</code></pre>
-<pre><code>## After 21 iterations, +1.6 mins:</code></pre>
+<pre><code>## After 21 iterations, +2.1 mins:</code></pre>
 <pre><code>##  confirmed 1 attribute: LotFrontage;</code></pre>
 <pre><code>##  rejected 1 attribute: BsmtFinType2;</code></pre>
 <pre><code>##  still have 16 attributes left.</code></pre>
@@ -1085,7 +1115,7 @@ boruta_Train &lt;- Boruta(rawHouseData_Train[names(rawHouseData_Train) != &quot;
 <pre><code>##  26. run of importance source...</code></pre>
 <pre><code>##  27. run of importance source...</code></pre>
 <pre><code>##  28. run of importance source...</code></pre>
-<pre><code>## After 28 iterations, +2 mins:</code></pre>
+<pre><code>## After 28 iterations, +2.6 mins:</code></pre>
 <pre><code>##  confirmed 1 attribute: LandContour;</code></pre>
 <pre><code>##  rejected 1 attribute: ExterCond;</code></pre>
 <pre><code>##  still have 14 attributes left.</code></pre>
@@ -1109,7 +1139,7 @@ boruta_Train &lt;- Boruta(rawHouseData_Train[names(rawHouseData_Train) != &quot;
 <pre><code>##  46. run of importance source...</code></pre>
 <pre><code>##  47. run of importance source...</code></pre>
 <pre><code>##  48. run of importance source...</code></pre>
-<pre><code>## After 48 iterations, +3.1 mins:</code></pre>
+<pre><code>## After 48 iterations, +4 mins:</code></pre>
 <pre><code>##  confirmed 1 attribute: LotShape;</code></pre>
 <pre><code>##  still have 13 attributes left.</code></pre>
 <pre><code>##  49. run of importance source...</code></pre>
@@ -1120,13 +1150,13 @@ boruta_Train &lt;- Boruta(rawHouseData_Train[names(rawHouseData_Train) != &quot;
 <pre><code>##  54. run of importance source...</code></pre>
 <pre><code>##  55. run of importance source...</code></pre>
 <pre><code>##  56. run of importance source...</code></pre>
-<pre><code>## After 56 iterations, +3.6 mins:</code></pre>
+<pre><code>## After 56 iterations, +4.5 mins:</code></pre>
 <pre><code>##  confirmed 1 attribute: Functional;</code></pre>
 <pre><code>##  still have 12 attributes left.</code></pre>
 <pre><code>##  57. run of importance source...</code></pre>
 <pre><code>##  58. run of importance source...</code></pre>
 <pre><code>##  59. run of importance source...</code></pre>
-<pre><code>## After 59 iterations, +3.7 mins:</code></pre>
+<pre><code>## After 59 iterations, +4.6 mins:</code></pre>
 <pre><code>##  rejected 2 attributes: BsmtFinSF2, EnclosedPorch;</code></pre>
 <pre><code>##  still have 10 attributes left.</code></pre>
 <pre><code>##  60. run of importance source...</code></pre>
@@ -1145,7 +1175,7 @@ boruta_Train &lt;- Boruta(rawHouseData_Train[names(rawHouseData_Train) != &quot;
 <pre><code>##  73. run of importance source...</code></pre>
 <pre><code>##  74. run of importance source...</code></pre>
 <pre><code>##  75. run of importance source...</code></pre>
-<pre><code>## After 75 iterations, +4.6 mins:</code></pre>
+<pre><code>## After 75 iterations, +5.6 mins:</code></pre>
 <pre><code>##  rejected 1 attribute: ScreenPorch;</code></pre>
 <pre><code>##  still have 9 attributes left.</code></pre>
 <pre><code>##  76. run of importance source...</code></pre>
@@ -1155,7 +1185,7 @@ boruta_Train &lt;- Boruta(rawHouseData_Train[names(rawHouseData_Train) != &quot;
 <pre><code>##  80. run of importance source...</code></pre>
 <pre><code>##  81. run of importance source...</code></pre>
 <pre><code>##  82. run of importance source...</code></pre>
-<pre><code>## After 82 iterations, +4.9 mins:</code></pre>
+<pre><code>## After 82 iterations, +6 mins:</code></pre>
 <pre><code>##  confirmed 1 attribute: MasVnrType;</code></pre>
 <pre><code>##  still have 8 attributes left.</code></pre>
 <pre><code>##  83. run of importance source...</code></pre>
@@ -1177,7 +1207,7 @@ boruta_Train &lt;- Boruta(rawHouseData_Train[names(rawHouseData_Train) != &quot;
 <pre><code>##  99. run of importance source...</code></pre>
 <pre class="r"><code>final.boruta &lt;- TentativeRoughFix(boruta_Train)
 print(final.boruta)</code></pre>
-<pre><code>## Boruta performed 99 iterations in 5.787243 mins.
+<pre><code>## Boruta performed 99 iterations in 6.989366 mins.
 ## Tentatives roughfixed over the last 99 iterations.
 ##  55 attributes confirmed important: BedroomAbvGr, BldgType, BsmtCond,
 ## BsmtFinSF1, BsmtFinType1 and 50 more;
@@ -1353,8 +1383,8 @@ cleanHouseData_Train$SalePrice &lt;- rawHouseData_Train$SalePrice</code></pre>
 ## </code></pre>
 </div>
 </div>
-<div id="linear-and-stepwise-regressions" class="section level1">
-<h1>Linear and Stepwise Regressions</h1>
+<div id="linear-and-stepwise-regressions-1" class="section level1">
+<h1>4. Linear and Stepwise Regressions</h1>
 <p>In this section, we conduct Linear and Stepwise Regressions to explore variable signifigance.</p>
 <div id="building-a-linear-regression" class="section level2">
 <h2>Building a Linear Regression</h2>
@@ -1732,8 +1762,8 @@ SalePrice_StepReg = stepAIC(SalePrice_LinReg, direction = &quot;both&quot;, trac
 </div>
 </div>
 </div>
-<div id="creating-a-normalized-version-of-the-data" class="section level1">
-<h1>Creating a Normalized Version of the Data</h1>
+<div id="creating-a-normalized-version-of-the-data-1" class="section level1">
+<h1>5. Creating a Normalized Version of the Data</h1>
 <div id="converting-categorical-data-to-numeric-data" class="section level2">
 <h2>Converting Categorical Data to Numeric Data</h2>
 <pre class="r"><code>cleanHouseData_Train[] &lt;- data.matrix(cleanHouseData_Train)</code></pre>
@@ -1913,8 +1943,8 @@ Norm_HouseData$SalePrice &lt;- cleanHouseData_Train$SalePrice</code></pre>
 ##  Max.   :1.00000   Max.   :1.0000   Max.   :1.0000   Max.   :755000</code></pre>
 </div>
 </div>
-<div id="dividing-data-into-train-and-test-parts" class="section level1">
-<h1>Dividing Data into Train and Test parts</h1>
+<div id="dividing-data-into-train-and-test-parts-1" class="section level1">
+<h1>6. Dividing Data into Train and Test parts</h1>
 <div id="randomizing-data-and-creating-train-and-test-ids" class="section level2">
 <h2>Randomizing Data and Creating Train and Test IDs</h2>
 <pre class="r"><code>set.seed(300)
@@ -1934,8 +1964,8 @@ OG_HouseData_Test &lt;- cleanHouseData_Train[testID,]</code></pre>
 Norm_HouseData_Test &lt;- Norm_HouseData[testID,]</code></pre>
 </div>
 </div>
-<div id="predictive-models" class="section level1">
-<h1>Predictive Models</h1>
+<div id="individual-predictive-models-1" class="section level1">
+<h1>7. Individual Predictive Models</h1>
 <div id="random-forest-model" class="section level2">
 <h2>Random Forest Model</h2>
 <div id="importing-the-required-libraries" class="section level3">
@@ -2035,7 +2065,7 @@ cor(ANN_Prediction, ANN_HouseData_Test$SalePrice)</code></pre>
 ## [1,] 0.8761163</code></pre>
 <pre class="r"><code>RMSE(ANN_Prediction, ANN_HouseData_Test$SalePrice)</code></pre>
 <pre><code>## [1] 39711.78</code></pre>
-<p>The ANN Model predictions and the actual house prices have a correlation of 0.876. This correlation is approximately 0.037 higher than the correlation obtained when all the variables from Boruta Screening were used. The RMSE which is related to the predicted sum of error is 3.971178210^{4}. The RMSE here is higher than what we got from the random forest model.</p>
+<p>The ANN Model predictions and the actual house prices have a correlation of 0.876. This correlation is approximately 0.037 higher than the correlation obtained when all the variables from Boruta Screening were used. The RMSE is 3.971178210^{4}. The RMSE here is higher than what we got from the Random Forest Model.</p>
 </div>
 </div>
 <div id="svr-model" class="section level2">
@@ -2074,7 +2104,7 @@ cor(SVR_Prediction, SVR_HouseData_Test$SalePrice)</code></pre>
 ## [1,] 0.9360918</code></pre>
 <pre class="r"><code>RMSE(SVR_Prediction, SVR_HouseData_Test$SalePrice)</code></pre>
 <pre><code>## [1] 28538.98</code></pre>
-<p>The house prices predicted by the SVR Model that uses all the variables that passed the Boruta Screening and the rbfdot kernel, and the actual house prices have a correlation of 0.936. The RMSE which is related to the predicted sum of error is 2.853897710^{4}. This is so far the model yielding the lowest error in our analysis.</p>
+<p>The house prices predicted by the SVR Model that uses all the variables that passed the Boruta Screening and the rbfdot kernel, and the actual house prices have a correlation of 0.936. The RMSE is 2.853897710^{4}. This is so far the model yielding the lowest error (RMSE) in our analysis.</p>
 </div>
 </div>
 <div id="knn-model" class="section level2">
@@ -2135,20 +2165,22 @@ plot(kNN_Prediction ~ kNN_HouseData_Test$SalePrice)</code></pre>
 <pre class="r"><code>RMSE(kNN_Prediction, kNN_HouseData_Test$SalePrice)</code></pre>
 <pre><code>## [1] 40616.09</code></pre>
 <p>The plot above shows the actual sale price of a house against the predicted sale price of the house. Since the plot is pretty linear - with the exception of a few outliers - and has a slope close to one, the kNN Model seems to be a quite decent model in predicting the sale price of a house.</p>
-<p>The kNN Model predictions and the actual house prices have a correlation of 0.863, which supports the indication of the plot that the kNN Model is a decent predictor for house prices. The RMSE which is related to the predicted sum of error is 4.061609410^{4}.</p>
+<p>The kNN Model predictions and the actual house prices have a correlation of 0.863, which supports the indication of the plot that the kNN Model is a decent predictor for house prices. The RMSE is 4.061609410^{4}.</p>
 </div>
 </div>
 </div>
 <div id="combined-prediction-model" class="section level1">
-<h1>Combined Prediction Model</h1>
+<h1>8. Combined Prediction Model</h1>
 <div id="building-a-dataframe-containing-predictions-of-all-models" class="section level2">
 <h2>Building a dataframe containing predictions of all models</h2>
 <pre class="r"><code>House_Prices &lt;- data.frame(RF_Prediction,ANN_Prediction,SVR_Prediction,kNN_Prediction,OG_HouseData_Test$SalePrice)
 colnames(House_Prices) &lt;- c(&quot;Random Forest&quot;, &quot;ANN&quot;, &quot;SVR&quot;, &quot;kNN&quot;, &quot;True Price&quot;)</code></pre>
 </div>
-<div id="combined-model-prediction" class="section level2">
-<h2>Combined Model Prediction</h2>
-<p>We built two combined models, one of which uses correlation as weights and and the other uses RMSE as weights. Then, we did a weighted-average for each model to produce the final prediction from all four models. It is worth noting here that the second combined model used RMSE of each model to conduct an inverse weighting scheme that yielded the results, since a smaller RMSE means a better fit.</p>
+<div id="combined-model-prediction-models" class="section level2">
+<h2>Combined Model Prediction Models</h2>
+<p>We have built two combined models, one of which is weighted by correlation and another which is weighted by RMSE. The second combined model uses RMSEs of the individual models to conduct an inverse weighting scheme that yields the results, since a smaller RMSE means a better fit.</p>
+<div id="creating-the-correlation-weighted-combined-model" class="section level3">
+<h3>Creating the Correlation-weighted Combined Model</h3>
 <pre class="r"><code># Correlations
 RF_Cor &lt;- cor(House_Prices$`Random Forest`,House_Prices$`True Price`)
 ANN_Cor &lt;- cor(House_Prices$ANN,House_Prices$`True Price`)
@@ -2164,48 +2196,55 @@ ANN_WeightCor &lt;- ANN_Cor / SUM_Of_Cor
 SVR_WeightCor &lt;- SVR_Cor / SUM_Of_Cor
 kNN_WeightCor &lt;- kNN_Cor / SUM_Of_Cor
 
-
-#RMSE of each model
+# Taking the correlation-weighted average of predictions
+House_Prices[,&quot;Correlation Weighted Average&quot;] &lt;- House_Prices$`Random Forest` * RF_WeightCor + House_Prices$ANN * ANN_WeightCor + House_Prices$SVR * SVR_WeightCor + House_Prices$kNN * kNN_WeightCor</code></pre>
+</div>
+<div id="creating-the-rmse-weighted-combined-model" class="section level3">
+<h3>Creating the RMSE-weighted Combined Model</h3>
+<pre class="r"><code># RMSE for each model
 RF_RMSE &lt;- RMSE(House_Prices$`Random Forest`,House_Prices$`True Price`)
 ANN_RMSE &lt;- RMSE(House_Prices$ANN,House_Prices$`True Price`)
 SVR_RMSE &lt;- RMSE(House_Prices$SVR,House_Prices$`True Price`)
 kNN_RMSE &lt;- RMSE(House_Prices$kNN,House_Prices$`True Price`)
 
-#Sum of RMSEs
+# Sum of RMSEs
 SUM_Of_RMSE &lt;- RF_RMSE + ANN_RMSE + SVR_RMSE + kNN_RMSE
 
 # Weights of models
-RF_WeightRMSE &lt;- (1- RF_RMSE / SUM_Of_RMSE)*(1/(4-1))
-ANN_WeightRMSE &lt;- (1-ANN_RMSE / SUM_Of_RMSE)*(1/(4-1))
+RF_WeightRMSE &lt;- (1 - RF_RMSE / SUM_Of_RMSE)*(1/(4-1))
+ANN_WeightRMSE &lt;- (1 - ANN_RMSE / SUM_Of_RMSE)*(1/(4-1))
 SVR_WeightRMSE &lt;- (1 - SVR_RMSE / SUM_Of_RMSE)*(1/(4-1))
-kNN_WeightRMSE &lt;- (1- kNN_RMSE / SUM_Of_RMSE)*(1/(4-1))
+kNN_WeightRMSE &lt;- (1 - kNN_RMSE / SUM_Of_RMSE)*(1/(4-1))
 
-
-# Taking the weighted average of predictions
-House_Prices[,&quot;Correlation Weighted Average&quot;] &lt;- House_Prices$`Random Forest` * RF_WeightCor + House_Prices$ANN * ANN_WeightCor + House_Prices$SVR * SVR_WeightCor + House_Prices$kNN * kNN_WeightCor
-
+# Taking the RMSE-weighted average of predictions
 House_Prices[,&quot;RMSE Weighted Average&quot;] = House_Prices$`Random Forest` * RF_WeightRMSE + House_Prices$ANN * ANN_WeightRMSE + House_Prices$SVR * SVR_WeightRMSE + House_Prices$kNN * kNN_WeightRMSE</code></pre>
+</div>
 </div>
 <div id="combined-model-results" class="section level2">
 <h2>Combined Model Results</h2>
-<pre class="r"><code>correlationCombined1 = cor(House_Prices$`Correlation Weighted Average`, House_Prices$`True Price`)
-rmseCombined1 = RMSE(House_Prices$`Correlation Weighted Average`,House_Prices$`True Price`)
-
-correlationCombined2 = cor(House_Prices$`RMSE Weighted Average`, House_Prices$`True Price`)
-rmseCombined2 = RMSE(House_Prices$`RMSE Weighted Average`,House_Prices$`True Price`)</code></pre>
-<p>The house prices predicted by our combined model using correlation weights and the actual house prices have a correlation of 0.927. The RMSE for the model is 3.022083410^{4}.<br />
-The house prices predicted by our combined model using RMSE inverse weighting and the actual house prices have a correlation of 0.928. The RMSE for the model is 3.010927610^{4}.</p>
-<p>Our combined models beat all our other models except for the SVR model in terms of accuracy and RMSE. For our SVR model, the correlation between predicted and actual prices was 0.936 and the RMSE was 2.853897710^{4}.</p>
+<div id="results-of-the-correlation-weighted-model" class="section level3">
+<h3>Results of the Correlation-weighted Model</h3>
+<pre class="r"><code>correlationCombined_1 &lt;- cor(House_Prices$`Correlation Weighted Average`, House_Prices$`True Price`)
+rmseCombined_1 &lt;- RMSE(House_Prices$`Correlation Weighted Average`,House_Prices$`True Price`)</code></pre>
+<p>The house prices predicted by our correlation-weighted combined model and the actual house prices have a correlation of 0.927. The RMSE for this model is 3.022083410^{4}.</p>
+</div>
+<div id="results-of-the-rmse-weighted-model" class="section level3">
+<h3>Results of the RMSE-weighted Model</h3>
+<pre class="r"><code>correlationCombined_2 &lt;- cor(House_Prices$`RMSE Weighted Average`, House_Prices$`True Price`)
+rmseCombined_2 &lt;- RMSE(House_Prices$`RMSE Weighted Average`,House_Prices$`True Price`)</code></pre>
+<p>The house prices predicted by our combined model that uses the inverse RMSE weighting and the actual house prices have a correlation of 0.928. The RMSE for the model is 3.010927610^{4}.</p>
+<p>Our combined models beat all our other models except for the SVR model in terms of correlation strength and RMSE. For our SVR model, the correlation between predicted and actual prices was 0.936 and the RMSE was 2.853897710^{4}.</p>
 </div>
 </div>
-<div id="conclusion" class="section level1">
-<h1>Conclusion</h1>
+</div>
+<div id="conclusion-1" class="section level1">
+<h1>9. Conclusion</h1>
 <p>Our objective was to predict Ames, Iowa property prices using machine learning models. As a base for our work we used an incredible Ames Housing Dataset.</p>
 <p>Before creating our models, we did some data cleaning. Firstly, we handled all NAs in the dataset accordingly and used the Boruta Package to identify important variables in the dataset. Furthermore, we used linear and stepwise regressions to take a basic look on the significant variables effecting house prices.</p>
-<p>Based on the cleaned data, we then went on and built four different predictive models, including a Random Forest Model, an Artificial Neural Network Model, a Support Vector Machine Model, and a k-Nearest-Neighbors Model. <strong>Out of the predictions of the four models, the predicted prices produced with the SVR Model had the highest correlation with the actual house prices listed in our Test Dataset. The correlation between the SVR Model Predictions and the actual house prices was 0.9361. Furthermore, it also has the lowest RMSE among all models which is 2.853897710^{4}</strong></p>
-<p><strong>The other models also performed fairly well. The Random Forest Model was the second most accurate. The correlation between the predictions made with the Random Forest Model and the actual house prices was 0.9355 Furthermore, the correlations between the predictions made by the ANN Model and the kNN Model and the actual house prices were 0.8761 and 0.863 respectively.</strong></p>
-<p>After creating the four individual models, we still thought that we could improve our predictions by obtaining <strong>a correlation-weighted average and also a RMSE inverse-weighted-average of the predictions </strong> of the individual models to create combined prediction models that would then be trained across multiple mechanisms. <strong>The correlation between the price predictions made with our combined model and the actual house prices were 0.927 and 0.928, along with RMSEs being 3.022083410^{4} and 3.010927610^{4}. These results still couldn’t outperform the SVR model itself in terms of both prediction trends (correlation) and errors (RMSE)</strong></p>
-<p>Finally, we use our best model, <strong>the SVR Model</strong>, to predict the prices for Ames, Iowa houses listed in a specific testing dataset provided in Kaggle (test.csv / rawHouseData_Test) and to create a submission file including the predictions. We will submit that file to the Kaggle Competition that is based on the Ames Housing Dataset.</p>
+<p>Based on the cleaned data, we then went on and built four different predictive models, including a Random Forest Model, an Artificial Neural Network Model, a Support Vector Machine Model, and a k-Nearest-Neighbors Model. Out of the predictions of the four models, the predicted prices produced with the SVR Model had the highest correlation with the actual house prices listed in our Test Dataset. The correlation between the SVR Model Predictions and the actual house prices was 0.9361. Furthermore, the SVR also had the lowest RMSE among all models, 2.853897710^{4}.</p>
+<p>The other models also performed fairly well. The Random Forest Model was the second most accurate. The correlation between the predictions made with the Random Forest Model and the actual house prices was 0.9355 Furthermore, the correlations between the predictions made by the ANN Model and the kNN Model and the actual house prices were 0.8761 and 0.863 respectively.</p>
+<p>After creating the four individual models, we still thought that we could improve our predictions by obtaining a correlation-weighted average and also a RMSE inverse-weighted-average of the predictions of the individual models to create combined prediction models that would then be trained across multiple mechanisms. The correlations between the price predictions made with our correlation- and RMSE-weighted combined models and the actual house prices were 0.927 and 0.928 respectively, along with the RMSEs being 3.022083410^{4} and 3.010927610^{4}. These results still couldn’t outperform the individual SVR model in terms of neither prediction trends (correlation) nor errors (RMSE).</p>
+<p>Finally, we use our best model, the SVR Model, to predict the prices for Ames, Iowa houses listed in a specific testing dataset provided in Kaggle (test.csv / rawHouseData_Test) and to create a submission file including the predictions. We will submit that file to the Kaggle Competition that is based on the Ames Housing Dataset.</p>
 <div id="constructing-the-final-prediction-for-the-kaggle-competition" class="section level2">
 <h2>Constructing the Final Prediction for the Kaggle Competition</h2>
 <div id="importing-test-data" class="section level3">
@@ -2490,8 +2529,8 @@ rawHouseData_Test &lt;- mice(rawHouseData_Test, m=5, maxit = 50, method = 'pmm',
 <pre><code>## Warning: Number of logged events: 4543</code></pre>
 <pre class="r"><code>rawHouseData_Test &lt;- mice::complete(rawHouseData_Test)</code></pre>
 </div>
-<div id="further-cleaning-with-boruta-training-1" class="section level4">
-<h4>Further Cleaning with Boruta Training</h4>
+<div id="further-cleaning-based-on-boruta-training" class="section level4">
+<h4>Further Cleaning based on Boruta Training</h4>
 <pre class="r"><code># Selecting only the features that passed the Boruta Screening for the Train Data
 cleanHouseData_Test &lt;- rawHouseData_Test[getSelectedAttributes(final.boruta, withTentative = F)]
 
@@ -2501,10 +2540,10 @@ cleanHouseData_Test[sapply(cleanHouseData_Test,is.character)] &lt;- lapply(clean
 # Adding SalePrice back into the test data
 cleanHouseData_Test$SalePrice &lt;- rawHouseData_Test$SalePrice</code></pre>
 </div>
-</div>
-<div id="making-test-dataset-in-the-same-format-as-the-train-data" class="section level3">
-<h3>Making Test Dataset in the Same Format as the Train Data</h3>
+<div id="creating-the-same-format-for-the-test-data-that-the-train-data-has" class="section level4">
+<h4>Creating the Same Format for the Test Data that the Train Data has</h4>
 <pre class="r"><code>cleanHouseData_Test[] &lt;- data.matrix(cleanHouseData_Test)</code></pre>
+</div>
 </div>
 <div id="constructing-the-final-prediction" class="section level3">
 <h3>Constructing the Final Prediction</h3>
