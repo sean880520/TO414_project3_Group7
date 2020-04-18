@@ -491,7 +491,6 @@ We have to clean the Test Data in a similar fashion than what we did with the Tr
 #### Converting Data into Characters for Data Cleaning
 
 ```{r}
-# We need to use characters for our Boruta Screening of features
 CharCategory <- c(names(Filter(is.character, rawHouseData_Test)), "MSSubClass")
 ```
 
@@ -518,18 +517,8 @@ rawHouseData_Test <- mice::complete(rawHouseData_Test)
 #### Further Cleaning with Boruta Training
 
 ```{r}
-# Importing the required library
-library(Boruta)
-
-# Executing Boruta Training
-set.seed(233)
-boruta_Train2 <- Boruta(rawHouseData_Test[names(rawHouseData_Test) != "Id" & names(rawHouseData_Test) != "SalePrice" ], rawHouseData_Test$SalePrice ,  doTrace = 2)
-final.boruta2 <- TentativeRoughFix(boruta_Train2)
-print(final.boruta2)
-plot(final.boruta2)
-
-# Selecting only the features that passed the Boruta Screening
-cleanHouseData_Test <- rawHouseData_Test[getSelectedAttributes(final.boruta2, withTentative = F)]
+# Selecting only the features that passed the Boruta Screening for the Train Data
+cleanHouseData_Test <- rawHouseData_Test[getSelectedAttributes(final.boruta, withTentative = F)]
 
 # Converting characters back into factors
 cleanHouseData_Test[sapply(cleanHouseData_Test,is.character)] <- lapply(cleanHouseData_Test[sapply(cleanHouseData_Test,is.character)], as.factor)
@@ -541,14 +530,21 @@ cleanHouseData_Test$SalePrice <- rawHouseData_Test$SalePrice
 ### Constructing the Final Prediction
 
 ```{r}
-Final_Kaggle_Prediction <- predict(SVR_Model, clean_HouseData_Test)
+Final_Kaggle_Prediction <- predict(SVR_Model, cleanHouseData_Test)
 ```
-
 
 ### Creating the Submission File
 
 ```{r}
+# Adding the necessary information 
+Kaggle_Submission$Id <- rawHouseData_Test$Id
+Kaggle_Submission$SalePrice <- Final_Kaggle_Prediction
 
+# Naming the Columns for the Submission File
+Kaggle_Submission <- Final_Kaggle_Prediction[,c("Id","SalePrice")]
+
+# Writing the Submission File
+write.csv(Kaggle_Submission, file = "Ames_House_Prices.csv", row.names = FALSE)
 ```
 
 
