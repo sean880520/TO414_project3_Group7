@@ -26,14 +26,10 @@ Besides submitting this file as our Project 3 deliverable, we will make our fina
 # General Data Exploration
 
 
-## Importing Data
+## Importing Train Data
 
 ```{r}
-# Importing the train part of the dataset
 rawHouseData_Train <- read.csv("train.csv", stringsAsFactors = FALSE)
-
-# Importing the test part of the dataset (used only for the final predictions for the Kaggle competition)
-rawHouseData_Test <- read.csv("test.csv", stringsAsFactors = FALSE)
 ```
 
 
@@ -87,7 +83,6 @@ rawHouseData_Train$MasVnrArea <- ifelse(is.na(rawHouseData_Train$MasVnrArea) == 
 # Imputing NAs by "Missing" for characters for the rest of the columns (i.e. e.g. PoolQC, MiscFeature, Alley), where NA means that attribute does not exist
 for(i in CharCategory){
   rawHouseData_Train[,i] = ifelse(is.na(rawHouseData_Train[,i]), "Missing", rawHouseData_Train[,i])
-  rawHouseData_Test[,i] = ifelse(is.na(rawHouseData_Test[,i]), "Missing", rawHouseData_Test[,i])
 }
 
 # Imputing the NAs for Lot Frontage using predictive mean matching 
@@ -438,7 +433,7 @@ colnames(House_Prices) <- c("Random Forest", "ANN", "SVR", "kNN", "True Price")
 
 ## Combined Model Prediction
 
-We built two combined models, one of which using correlation as weights and weigted-averaged each model. The second combined model used RMSE of each model to conduct an inverse weighting scheme that yielded the results.
+We built two combined models, one of which uses correlation as weights and and the other uses RMSE as weights. Then, we did a weighted-average for each model to produce the final prediction from all four models. It is worth noting here that the second combined model used RMSE of each model to conduct an inverse weighting scheme that yielded the results, since a smaller RMSE means a better fit. 
 
 ```{r}
 # Correlations
@@ -493,7 +488,7 @@ rmseCombined2 = RMSE(House_Prices$`RMSE Weighted Average`,House_Prices$`True Pri
 The house prices predicted by our combined model using correlation weights and the actual house prices have a correlation of `r round(correlationCombined1, digits = 3)`. The RMSE for the model is  `r round(rmseCombined1, digits = 3)`.  
 The house prices predicted by our combined model using RMSE inverse weighting and the actual house prices have a correlation of `r round(correlationCombined2, digits = 3)`. The RMSE for the model is  `r round(rmseCombined2, digits = 3)`.
 
-Our combined models beat all our other models in accuracy, besides the SVR Model, for which the correlation between predicted and actual prices was `r round(cor(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)`. And the RMSE being `r round(RMSE(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)`.
+Our combined models beat all our other models except for the SVR model in terms of accuracy and RMSE. For our SVR model, the correlation between predicted and actual prices was `r round(cor(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)` and the RMSE was `r round(RMSE(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)`.
 
 
 
@@ -503,7 +498,7 @@ Our objective was to predict Ames, Iowa property prices using machine learning m
 
 Before creating our models, we did some data cleaning. Firstly, we handled all NAs in the dataset accordingly and used the Boruta Package to identify important variables in the dataset. Furthermore, we used linear and stepwise regressions to take a basic look on the significant variables effecting house prices. 
   
-Based on the cleaned data, we then went on and built four different predictive models, including a Random Forest Model, an Artificial Neural Network Model, a Support Vector Machine Model, and a k-Nearest-Neighbors Model. **Out of the predictions of the four models, the predicted prices produced with the SVR Model had the highest correlation with the actual house prices listed in our Test Dataset. The correlation between the SVR Model Predictions and the actual house prices was `r round(SVR_Cor, digits = 4)`, it also has the lowest RMSE among all models which is `r round(SVR_RMSE, digits = 4)`**
+Based on the cleaned data, we then went on and built four different predictive models, including a Random Forest Model, an Artificial Neural Network Model, a Support Vector Machine Model, and a k-Nearest-Neighbors Model. **Out of the predictions of the four models, the predicted prices produced with the SVR Model had the highest correlation with the actual house prices listed in our Test Dataset. The correlation between the SVR Model Predictions and the actual house prices was `r round(SVR_Cor, digits = 4)`. Furthermore, it also has the lowest RMSE among all models which is `r round(SVR_RMSE, digits = 4)`**
 
 **The other models also performed fairly well. The Random Forest Model was the second most accurate. The correlation between the predictions made with the Random Forest Model and the actual house prices was `r round(RF_Cor, digits = 4)` Furthermore, the correlations between the predictions made by the ANN Model and the kNN Model and the actual house prices were `r round(ANN_Cor, digits = 4)` and `r round(kNN_Cor, digits = 4)` respectively.**
   
@@ -512,70 +507,82 @@ After creating the four individual models, we still thought that we could improv
 Finally, we use our best model, **the SVR Model**,  to predict the prices for Ames, Iowa houses listed in a specific testing dataset provided in Kaggle (test.csv / rawHouseData_Test) and to create a submission file including the predictions. We will submit that file to the Kaggle Competition that is based on the Ames Housing Dataset.
 
 
-<!-- ## Constructing the Final Prediction for the Kaggle Competition -->
+## Constructing the Final Prediction for the Kaggle Competition
 
-<!-- ### Cleaning the Test Data -->
+### Importing Test Data
 
-<!-- We have to clean the Test Data in a similar fashion than what we did with the Train Data in the beginning of the file. -->
+```{r}
+rawHouseData_Test <- read.csv("test.csv", stringsAsFactors = FALSE)
+```
 
-<!-- #### Converting Data into Characters for Data Cleaning -->
+### Cleaning the Test Data
 
-<!-- ```{r} -->
-<!-- CharCategory <- c(names(Filter(is.character, rawHouseData_Test)), "MSSubClass") -->
-<!-- ``` -->
+We have to clean the Test Data in a similar fashion than what we did with the Train Data in the beginning of the file.
 
-<!-- #### Removing and Imputing NAs -->
+#### Converting Data into Characters for Data Cleaning
 
-<!-- ```{r} -->
-<!-- # Dropping the GarageYrBlt column - imputing NAs with year = 0 might affect regression and other garage variables exist -->
-<!-- rawHouseData_Test <- rawHouseData_Test[,!names(rawHouseData_Test)=="GarageYrBlt"] -->
+```{r}
+CharCategory <- c(names(Filter(is.character, rawHouseData_Test)), "MSSubClass")
+```
 
-<!-- # Imputing NAs in MasVnrArea with 0 -->
-<!-- rawHouseData_Test$MasVnrArea <- ifelse(is.na(rawHouseData_Test$MasVnrArea) == TRUE, 0, rawHouseData_Test$MasVnrArea) -->
+#### Removing and Imputing NAs
 
-<!-- # Imputing NAs by "Missing" for characters for the rest of the columns (i.e. e.g. PoolQC, MiscFeature, Alley), where NA means that attribute does not exist -->
-<!-- for(i in CharCategory){ -->
-<!--   rawHouseData_Train[,i] = ifelse(is.na(rawHouseData_Train[,i]), "Missing", rawHouseData_Train[,i]) -->
-<!--   rawHouseData_Test[,i] = ifelse(is.na(rawHouseData_Test[,i]), "Missing", rawHouseData_Test[,i]) -->
-<!-- } -->
+```{r}
+# Dropping the GarageYrBlt column - imputing NAs with year = 0 might affect regression and other garage variables exist
+rawHouseData_Test <- rawHouseData_Test[,!names(rawHouseData_Test)=="GarageYrBlt"]
 
-<!-- # Imputing the NAs for Lot Frontage using predictive mean matching -->
-<!-- rawHouseData_Test <- mice(rawHouseData_Test, m=5, maxit = 50, method = 'pmm', seed = 100) -->
-<!-- rawHouseData_Test <- mice::complete(rawHouseData_Test) -->
-<!-- ``` -->
+# Imputing NAs in MasVnrArea with 0
+rawHouseData_Test$MasVnrArea <- ifelse(is.na(rawHouseData_Test$MasVnrArea) == TRUE, 0, rawHouseData_Test$MasVnrArea)
 
-<!-- #### Further Cleaning with Boruta Training -->
+# Imputing NAs by "Missing" for characters for the rest of the columns (i.e. e.g. PoolQC, MiscFeature, Alley), where NA means that attribute does not exist
+for(i in CharCategory){
+  rawHouseData_Test[,i] = ifelse(is.na(rawHouseData_Test[,i]), "Missing", rawHouseData_Test[,i])
+}
 
-<!-- ```{r} -->
-<!-- # Selecting only the features that passed the Boruta Screening for the Train Data -->
-<!-- cleanHouseData_Test <- rawHouseData_Test[getSelectedAttributes(final.boruta, withTentative = F)] -->
+# Imputing the NAs for Lot Frontage using predictive mean matching
+rawHouseData_Test <- mice(rawHouseData_Test, m=5, maxit = 50, method = 'pmm', seed = 100)
+rawHouseData_Test <- mice::complete(rawHouseData_Test)
+```
 
-<!-- # Converting characters back into factors -->
-<!-- cleanHouseData_Test[sapply(cleanHouseData_Test,is.character)] <- lapply(cleanHouseData_Test[sapply(cleanHouseData_Test,is.character)], as.factor) -->
+#### Further Cleaning with Boruta Training
 
-<!-- # Adding SalePrice back into the train data -->
-<!-- cleanHouseData_Test$SalePrice <- rawHouseData_Test$SalePrice -->
-<!-- ``` -->
+```{r}
+# Selecting only the features that passed the Boruta Screening for the Train Data
+cleanHouseData_Test <- rawHouseData_Test[getSelectedAttributes(final.boruta, withTentative = F)]
 
-<!-- ### Constructing the Final Prediction -->
+# Converting characters back into factors
+cleanHouseData_Test[sapply(cleanHouseData_Test,is.character)] <- lapply(cleanHouseData_Test[sapply(cleanHouseData_Test,is.character)], as.factor)
 
-<!-- ```{r} -->
-<!-- Final_Kaggle_Prediction <- predict(SVR_Model, cleanHouseData_Test) -->
-<!-- ``` -->
+# Adding SalePrice back into the test data
+cleanHouseData_Test$SalePrice <- rawHouseData_Test$SalePrice
+```
 
-<!-- ### Creating the Submission File -->
+### Making Test Dataset in the Same Format as the Train Data
 
-<!-- ```{r} -->
-<!-- # Adding the necessary information -->
-<!-- Kaggle_Submission$Id <- rawHouseData_Test$Id -->
-<!-- Kaggle_Submission$SalePrice <- Final_Kaggle_Prediction -->
+```{r}
+cleanHouseData_Test[] <- data.matrix(cleanHouseData_Test)
+```
 
-<!-- # Naming the Columns for the Submission File -->
-<!-- Kaggle_Submission <- Final_Kaggle_Prediction[,c("Id","SalePrice")] -->
 
-<!-- # Writing the Submission File -->
-<!-- write.csv(Kaggle_Submission, file = "Ames_House_Prices.csv", row.names = FALSE) -->
-<!-- ``` -->
+### Constructing the Final Prediction
+
+```{r}
+Final_Kaggle_Prediction <- predict(SVR_Model, cleanHouseData_Test)
+```
+
+### Creating the Submission File
+
+```{r}
+# Adding the necessary information
+Kaggle_Submission <- as.data.frame(rawHouseData_Test$Id)
+Kaggle_Submission$SalePrice <- Final_Kaggle_Prediction
+
+# Naming the Columns for the Submission File
+colnames(Kaggle_Submission) <- c("Id","SalePrice")
+
+# Writing the Submission File
+write.csv(Kaggle_Submission, file = "Ames_House_Prices.csv", row.names = FALSE)
+```
 
 
 
