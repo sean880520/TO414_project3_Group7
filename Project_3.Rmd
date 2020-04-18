@@ -26,14 +26,10 @@ Besides submitting this file as our Project 3 deliverable, we will make our fina
 # General Data Exploration
 
 
-## Importing Data
+## Importing Train Data
 
 ```{r}
-# Importing the train part of the dataset
 rawHouseData_Train <- read.csv("train.csv", stringsAsFactors = FALSE)
-
-# Importing the test part of the dataset (used only for the final predictions for the Kaggle competition)
-rawHouseData_Test <- read.csv("test.csv", stringsAsFactors = FALSE)
 ```
 
 
@@ -87,7 +83,6 @@ rawHouseData_Train$MasVnrArea <- ifelse(is.na(rawHouseData_Train$MasVnrArea) == 
 # Imputing NAs by "Missing" for characters for the rest of the columns (i.e. e.g. PoolQC, MiscFeature, Alley), where NA means that attribute does not exist
 for(i in CharCategory){
   rawHouseData_Train[,i] = ifelse(is.na(rawHouseData_Train[,i]), "Missing", rawHouseData_Train[,i])
-  rawHouseData_Test[,i] = ifelse(is.na(rawHouseData_Test[,i]), "Missing", rawHouseData_Test[,i])
 }
 
 # Imputing the NAs for Lot Frontage using predictive mean matching 
@@ -288,9 +283,10 @@ plot(RF_Model)
 ```{r}
 RF_Prediction <- predict(RF_Model, RF_HouseData_Test, type = "response")
 cor(RF_Prediction,RF_HouseData_Test$SalePrice)
+RMSE(RF_Prediction,RF_HouseData_Test$SalePrice)
 ```
 
-There is a strong correlation of `r round(cor(RF_Prediction,RF_HouseData_Test$SalePrice), digits = 3)` between the house prices predicted by the Random Forest Model and actual prices. This implies a good prediction and that the predicted prices follow a similar trend with the real prices. Compared to the correlation achieved when when all the variables from the Boruta screening were used, the achieved correlation with this set of variables is higher by approximately 0.0006.
+There is a strong correlation of `r round(cor(RF_Prediction,RF_HouseData_Test$SalePrice), digits = 3)` between the house prices predicted by the Random Forest Model and actual prices. This implies a good prediction and that the predicted prices follow a similar trend with the real prices. Compared to the correlation achieved when when all the variables from the Boruta screening were used, the achieved correlation with this set of variables is higher by approximately 0.0006. The RMSE which is related to the predicted sum of error is `r round(RMSE(RF_Prediction,RF_HouseData_Test$SalePrice), digits = 3)`.
 
 
 ## ANN Model
@@ -329,9 +325,10 @@ ANN_Prediction <- predict(ANN_Model, newdata=ANN_HouseData_Test[,!names(ANN_Hous
 
 # ANN Results
 cor(ANN_Prediction, ANN_HouseData_Test$SalePrice)
+RMSE(ANN_Prediction, ANN_HouseData_Test$SalePrice)
 ```
 
-The ANN Model predictions and the actual house prices have a correlation of `r round(cor(ANN_Prediction, ANN_HouseData_Test$SalePrice), digits = 3)`. This correlation is approximately 0.037 higher than the correlation obtained when all the variables from Boruta Screening were used.
+The ANN Model predictions and the actual house prices have a correlation of `r round(cor(ANN_Prediction, ANN_HouseData_Test$SalePrice), digits = 3)`. This correlation is approximately 0.037 higher than the correlation obtained when all the variables from Boruta Screening were used. The RMSE which is related to the predicted sum of error is `r round(RMSE(ANN_Prediction, ANN_HouseData_Test$SalePrice), digits = 3)`. The RMSE here is higher than what we got from the random forest model.
 
 
 ## SVR Model
@@ -370,9 +367,10 @@ SVR_Prediction <- predict(SVR_Model, SVR_HouseData_Test)
 
 # SVR Model Results
 cor(SVR_Prediction, SVR_HouseData_Test$SalePrice)
+RMSE(SVR_Prediction, SVR_HouseData_Test$SalePrice)
 ```
 
-The house prices predicted by the SVR Model that uses all the variables that passed the Boruta Screening and the rbfdot kernel, and the actual house prices have a correlation of `r round(cor(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)`.
+The house prices predicted by the SVR Model that uses all the variables that passed the Boruta Screening and the rbfdot kernel, and the actual house prices have a correlation of `r round(cor(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)`. The RMSE which is related to the predicted sum of error is `r round(RMSE(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)`. This is so far the model yielding the lowest error in our analysis.
 
 
 ## kNN Model
@@ -413,11 +411,12 @@ The varImp function helps us see that OverallQual, GrLivArea, and TotalBsmtSF ar
 kNN_Prediction <- predict(kNN_Model, newdata = kNN_HouseData_Test)
 plot(kNN_Prediction ~ kNN_HouseData_Test$SalePrice)
 cor(kNN_Prediction, kNN_HouseData_Test$SalePrice)
+RMSE(kNN_Prediction, kNN_HouseData_Test$SalePrice)
 ```
 
 The plot above shows the actual sale price of a house against the predicted sale price of the house. Since the plot is pretty linear - with the exception of a few outliers - and has a slope close to one, the kNN Model seems to be a quite decent model in predicting the sale price of a house. 
 
-The kNN Model predictions and the actual house prices have a correlation of `r round(cor(kNN_Prediction, kNN_HouseData_Test$SalePrice), digits = 3)`, which supports the indication of the plot that the kNN Model is a decent predictor for house prices. 
+The kNN Model predictions and the actual house prices have a correlation of `r round(cor(kNN_Prediction, kNN_HouseData_Test$SalePrice), digits = 3)`, which supports the indication of the plot that the kNN Model is a decent predictor for house prices. The RMSE which is related to the predicted sum of error is `r RMSE(kNN_Prediction, kNN_HouseData_Test$SalePrice)`. 
 
 
 
@@ -434,7 +433,7 @@ colnames(House_Prices) <- c("Random Forest", "ANN", "SVR", "kNN", "True Price")
 
 ## Combined Model Prediction
 
-We build the prediction for our combined prediction model by taking an average of the predictions of the individual models, weighted by the relative correlation strength of each model.
+We built two combined models, one of which uses correlation as weights and and the other uses RMSE as weights. Then, we did a weighted-average for each model to produce the final prediction from all four models. It is worth noting here that the second combined model used RMSE of each model to conduct an inverse weighting scheme that yielded the results, since a smaller RMSE means a better fit. 
 
 ```{r}
 # Correlations
@@ -446,24 +445,50 @@ kNN_Cor <- cor(House_Prices$kNN,House_Prices$`True Price`)
 # Sum of Correlations
 SUM_Of_Cor <- RF_Cor + ANN_Cor + SVR_Cor + kNN_Cor
 
-# Weights
-RF_Weight <- RF_Cor / SUM_Of_Cor
-ANN_Weight <- ANN_Cor / SUM_Of_Cor
-SVR_Weight <- SVR_Cor / SUM_Of_Cor
-kNN_Weight <- kNN_Cor / SUM_Of_Cor
+# Weights of models
+RF_WeightCor <- RF_Cor / SUM_Of_Cor
+ANN_WeightCor <- ANN_Cor / SUM_Of_Cor
+SVR_WeightCor <- SVR_Cor / SUM_Of_Cor
+kNN_WeightCor <- kNN_Cor / SUM_Of_Cor
+
+
+#RMSE of each model
+RF_RMSE <- RMSE(House_Prices$`Random Forest`,House_Prices$`True Price`)
+ANN_RMSE <- RMSE(House_Prices$ANN,House_Prices$`True Price`)
+SVR_RMSE <- RMSE(House_Prices$SVR,House_Prices$`True Price`)
+kNN_RMSE <- RMSE(House_Prices$kNN,House_Prices$`True Price`)
+
+#Sum of RMSEs
+SUM_Of_RMSE <- RF_RMSE + ANN_RMSE + SVR_RMSE + kNN_RMSE
+
+# Weights of models
+RF_WeightRMSE <- (1- RF_RMSE / SUM_Of_RMSE)*(1/(4-1))
+ANN_WeightRMSE <- (1-ANN_RMSE / SUM_Of_RMSE)*(1/(4-1))
+SVR_WeightRMSE <- (1 - SVR_RMSE / SUM_Of_RMSE)*(1/(4-1))
+kNN_WeightRMSE <- (1- kNN_RMSE / SUM_Of_RMSE)*(1/(4-1))
+
 
 # Taking the weighted average of predictions
-House_Prices[,"Weighted Average"] <- House_Prices$`Random Forest` * RF_Weight + House_Prices$ANN * ANN_Weight + House_Prices$SVR * SVR_Weight + House_Prices$kNN * kNN_Weight
+House_Prices[,"Correlation Weighted Average"] <- House_Prices$`Random Forest` * RF_WeightCor + House_Prices$ANN * ANN_WeightCor + House_Prices$SVR * SVR_WeightCor + House_Prices$kNN * kNN_WeightCor
+
+House_Prices[,"RMSE Weighted Average"] = House_Prices$`Random Forest` * RF_WeightRMSE + House_Prices$ANN * ANN_WeightRMSE + House_Prices$SVR * SVR_WeightRMSE + House_Prices$kNN * kNN_WeightRMSE
 ```
 
 
 ## Combined Model Results
 
 ```{r}
-cor(House_Prices$`Weighted Average`, House_Prices$`True Price`)
+correlationCombined1 = cor(House_Prices$`Correlation Weighted Average`, House_Prices$`True Price`)
+rmseCombined1 = RMSE(House_Prices$`Correlation Weighted Average`,House_Prices$`True Price`)
+
+correlationCombined2 = cor(House_Prices$`RMSE Weighted Average`, House_Prices$`True Price`)
+rmseCombined2 = RMSE(House_Prices$`RMSE Weighted Average`,House_Prices$`True Price`)
 ```
 
-The house prices predicted by our combined model and the actual house prices have a correlation of `r round(cor(House_Prices$`Weighted Average`, House_Prices$`True Price`), digits = 3)`. Our combined model beats all our other models in accuracy, besides the SVR Model, for which the correlation between predicted and actual prices was `r round(cor(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)`.
+The house prices predicted by our combined model using correlation weights and the actual house prices have a correlation of `r round(correlationCombined1, digits = 3)`. The RMSE for the model is  `r round(rmseCombined1, digits = 3)`.  
+The house prices predicted by our combined model using RMSE inverse weighting and the actual house prices have a correlation of `r round(correlationCombined2, digits = 3)`. The RMSE for the model is  `r round(rmseCombined2, digits = 3)`.
+
+Our combined models beat all our other models except for the SVR model in terms of accuracy and RMSE. For our SVR model, the correlation between predicted and actual prices was `r round(cor(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)` and the RMSE was `r round(RMSE(SVR_Prediction, SVR_HouseData_Test$SalePrice), digits = 3)`.
 
 
 
@@ -473,16 +498,22 @@ Our objective was to predict Ames, Iowa property prices using machine learning m
 
 Before creating our models, we did some data cleaning. Firstly, we handled all NAs in the dataset accordingly and used the Boruta Package to identify important variables in the dataset. Furthermore, we used linear and stepwise regressions to take a basic look on the significant variables effecting house prices. 
   
-Based on the cleaned data, we then went on and built four different predictive models, including a Random Forest Model, an Artificial Neural Network Model, a Support Vector Machine Model, and a k-Nearest-Neighbors Model. **Out of the predictions of the four models, the predicted prices produced with the SVR Model had the highest correlation with the actual house prices listed in our Test Dataset. The correlation between the SVR Model Predictions and the actual house prices was `r round(SVR_Cor, digits = 4)`.**
+Based on the cleaned data, we then went on and built four different predictive models, including a Random Forest Model, an Artificial Neural Network Model, a Support Vector Machine Model, and a k-Nearest-Neighbors Model. **Out of the predictions of the four models, the predicted prices produced with the SVR Model had the highest correlation with the actual house prices listed in our Test Dataset. The correlation between the SVR Model Predictions and the actual house prices was `r round(SVR_Cor, digits = 4)`. Furthermore, it also has the lowest RMSE among all models which is `r round(SVR_RMSE, digits = 4)`**
 
-**The other models also performed fairly well. The Random Forest Model was the second most accurate. The correlation between the predictions made with the SVR Model and the actual house prices was `r round(RF_Cor, digits = 4)` Furthermore, the correlations between the predictions made by the ANN Model and the kNN Model and the actual house prices were `r round(ANN_Cor, digits = 4)` and `r round(kNN_Cor, digits = 4)` respectively.**
+**The other models also performed fairly well. The Random Forest Model was the second most accurate. The correlation between the predictions made with the Random Forest Model and the actual house prices was `r round(RF_Cor, digits = 4)` Furthermore, the correlations between the predictions made by the ANN Model and the kNN Model and the actual house prices were `r round(ANN_Cor, digits = 4)` and `r round(kNN_Cor, digits = 4)` respectively.**
   
-After creating the four individual models, we still thought that we could improve our predictions by obtaining **a correlation-weighted average of the predictions** of the individual models to create a combined prediction model that would then be trained across multiple mechanisms. **The correlation between the price predictions made with our combined model and the actual house prices was `r round(CombinedModel_Cor, digits = 4)`. This correlation (accuracy) was the second best between all the models.** 
+After creating the four individual models, we still thought that we could improve our predictions by obtaining **a correlation-weighted average and also a RMSE inverse-weighted-average of the predictions ** of the individual models to create combined prediction models that would then be trained across multiple mechanisms. **The correlation between the price predictions made with our combined model and the actual house prices were `r round(correlationCombined1, digits = 3)` and `r round(correlationCombined2, digits = 3)`, along with RMSEs being `r round(rmseCombined1, digits = 3)` and `r round(rmseCombined2, digits = 3)`. These results still couldn't outperform the SVR model itself in terms of both prediction trends (correlation) and errors (RMSE)**
 
 Finally, we use our best model, **the SVR Model**,  to predict the prices for Ames, Iowa houses listed in a specific testing dataset provided in Kaggle (test.csv / rawHouseData_Test) and to create a submission file including the predictions. We will submit that file to the Kaggle Competition that is based on the Ames Housing Dataset.
 
 
 ## Constructing the Final Prediction for the Kaggle Competition
+
+### Importing Test Data
+
+```{r}
+rawHouseData_Test <- read.csv("test.csv", stringsAsFactors = FALSE)
+```
 
 ### Cleaning the Test Data
 
@@ -491,7 +522,6 @@ We have to clean the Test Data in a similar fashion than what we did with the Tr
 #### Converting Data into Characters for Data Cleaning
 
 ```{r}
-# We need to use characters for our Boruta Screening of features
 CharCategory <- c(names(Filter(is.character, rawHouseData_Test)), "MSSubClass")
 ```
 
@@ -499,18 +529,17 @@ CharCategory <- c(names(Filter(is.character, rawHouseData_Test)), "MSSubClass")
 
 ```{r}
 # Dropping the GarageYrBlt column - imputing NAs with year = 0 might affect regression and other garage variables exist
-rawHouseData_Test <- rawHouseData_Test[,!names(rawHouseData_Test)=="GarageYrBlt"] 
+rawHouseData_Test <- rawHouseData_Test[,!names(rawHouseData_Test)=="GarageYrBlt"]
 
 # Imputing NAs in MasVnrArea with 0
 rawHouseData_Test$MasVnrArea <- ifelse(is.na(rawHouseData_Test$MasVnrArea) == TRUE, 0, rawHouseData_Test$MasVnrArea)
 
 # Imputing NAs by "Missing" for characters for the rest of the columns (i.e. e.g. PoolQC, MiscFeature, Alley), where NA means that attribute does not exist
 for(i in CharCategory){
-  rawHouseData_Train[,i] = ifelse(is.na(rawHouseData_Train[,i]), "Missing", rawHouseData_Train[,i])
   rawHouseData_Test[,i] = ifelse(is.na(rawHouseData_Test[,i]), "Missing", rawHouseData_Test[,i])
 }
 
-# Imputing the NAs for Lot Frontage using predictive mean matching 
+# Imputing the NAs for Lot Frontage using predictive mean matching
 rawHouseData_Test <- mice(rawHouseData_Test, m=5, maxit = 50, method = 'pmm', seed = 100)
 rawHouseData_Test <- mice::complete(rawHouseData_Test)
 ```
@@ -518,37 +547,41 @@ rawHouseData_Test <- mice::complete(rawHouseData_Test)
 #### Further Cleaning with Boruta Training
 
 ```{r}
-# Importing the required library
-library(Boruta)
-
-# Executing Boruta Training
-set.seed(233)
-boruta_Train2 <- Boruta(rawHouseData_Test[names(rawHouseData_Test) != "Id" & names(rawHouseData_Test) != "SalePrice" ], rawHouseData_Test$SalePrice ,  doTrace = 2)
-final.boruta2 <- TentativeRoughFix(boruta_Train2)
-print(final.boruta2)
-plot(final.boruta2)
-
-# Selecting only the features that passed the Boruta Screening
-cleanHouseData_Test <- rawHouseData_Test[getSelectedAttributes(final.boruta2, withTentative = F)]
+# Selecting only the features that passed the Boruta Screening for the Train Data
+cleanHouseData_Test <- rawHouseData_Test[getSelectedAttributes(final.boruta, withTentative = F)]
 
 # Converting characters back into factors
 cleanHouseData_Test[sapply(cleanHouseData_Test,is.character)] <- lapply(cleanHouseData_Test[sapply(cleanHouseData_Test,is.character)], as.factor)
 
-# Adding SalePrice back into the train data
+# Adding SalePrice back into the test data
 cleanHouseData_Test$SalePrice <- rawHouseData_Test$SalePrice
 ```
+
+### Making Test Dataset in the Same Format as the Train Data
+
+```{r}
+cleanHouseData_Test[] <- data.matrix(cleanHouseData_Test)
+```
+
 
 ### Constructing the Final Prediction
 
 ```{r}
-Final_Kaggle_Prediction <- predict(SVR_Model, clean_HouseData_Test)
+Final_Kaggle_Prediction <- predict(SVR_Model, cleanHouseData_Test)
 ```
-
 
 ### Creating the Submission File
 
 ```{r}
+# Adding the necessary information
+Kaggle_Submission <- as.data.frame(rawHouseData_Test$Id)
+Kaggle_Submission$SalePrice <- Final_Kaggle_Prediction
 
+# Naming the Columns for the Submission File
+colnames(Kaggle_Submission) <- c("Id","SalePrice")
+
+# Writing the Submission File
+write.csv(Kaggle_Submission, file = "Ames_House_Prices.csv", row.names = FALSE)
 ```
 
 
