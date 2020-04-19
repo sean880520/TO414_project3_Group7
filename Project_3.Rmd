@@ -2,36 +2,18 @@
 title: "Project 3: The Ames Housing Dataset"
 author: "Sean Tsai, Olli Rissanen, Kit Tsang, Ying Jie Chin, Abhinav Alluri"
 date: "4/17/2020"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: False
+      smooth_scroll: True
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
-
-
-# Table of Contents
-
-#### 1. Description of the Data and our Project
-
-#### 2. General Data Exploration
-
-#### 3. Data Cleaning
-
-#### 4. Linear and Stepwise Regressions
-
-#### 5. Creating a Normalized Version of the Data
-
-#### 6. Dividing Data into Train and Test Parts
-
-#### 7. Individual Predictive Models
-
-#### 8. Combined Prediction Models
-
-#### 9. Conclusion
-
-
 
 # 1. Description of the Data and our Project
 
@@ -77,7 +59,7 @@ CharCategory <- c(names(Filter(is.character, rawHouseData_Train)), "MSSubClass")
 
 ## Identifying NAs with mice
 
-```{r}
+```{r  echo=T, message=FALSE, warning=FALSE}
 # Importing the required libraries
 library(VIM)
 library(mice)
@@ -92,11 +74,11 @@ mice_plot <- aggr(rawHouseData_Train, col=c('navyblue','yellow'),
 
 ## Removing and Imputing NAs
 
-```{r}
+```{r  echo=T, results='hide', message=FALSE, warning=FALSE}
 # Dropping the row with NA in Electrical column (only one missing observation for the variable)
 rawHouseData_Train <- rawHouseData_Train[!is.na(rawHouseData_Train$Electrical),] 
 
-# Dropping the GarageYrBlt column - imputing NAs with year = 0 might affect regression and other garage variables exist
+# Dropping the GarageYrBlt column, as NAs refer to garage not built, imputing NAs with year = 0 might affect regression and other garage variables exist. Since other garage variables exist, dropping this column has no significant effect.
 rawHouseData_Train <- rawHouseData_Train[,!names(rawHouseData_Train)=="GarageYrBlt"] 
 
 # Imputing NAs in MasVnrArea with 0
@@ -115,7 +97,7 @@ rawHouseData_Train <- mice::complete(rawHouseData_Train)
 
 ## Further Cleaning with Boruta Training
 
-```{r}
+```{r  echo=T, results='hide', message=FALSE, warning=FALSE}
 # Boruta Train package to identify important features (https://www.datacamp.com/community/tutorials/feature-selection-R-boruta)
 
 # Importing the required library
@@ -125,6 +107,10 @@ library(Boruta)
 set.seed(233)
 boruta_Train <- Boruta(rawHouseData_Train[names(rawHouseData_Train) != "Id" & names(rawHouseData_Train) != "SalePrice" ], rawHouseData_Train$SalePrice ,  doTrace = 2)
 final.boruta <- TentativeRoughFix(boruta_Train)
+```
+
+## A Look into the Boruta Results
+```{r}
 print(final.boruta)
 plot(final.boruta)
 
@@ -279,7 +265,7 @@ RF_HouseData_Test <- OG_HouseData_Test
 
 ### Creating the Random Forest Model
 
-To decide the variable combination to use in the Random Forest Model, we tested 2 different variable combinations. The first combination of variables included all variables in RF_HouseData_Train, which includes all the variables deemed as important by Boruta. The second combination of variables included all the significant variables with a p-value lower than 0.05 from the final Stepwise Regression. We used the significant variables from the final Stepwise Regression model instead of the significant variables from our first Linear Regression model because the Stepwise Regression model was more optimimized with a lower AIC.
+To decide the variable combination to use in the Random Forest Model, we tested 2 different variable combinations. The first combination of variables included all variables in RF_HouseData_Train, which includes all the variables deemed as important by Boruta. The second combination of variables included all the significant variables with a p-value lower than 0.05 from the final Stepwise Regression. We used the significant variables from the final Stepwise Regression instead of the significant variables from our first Linear Regression because the Stepwise Regression was more optimimized with a lower AIC.
 
 Using only the significant variables from the Stepwise Regression produced the better accuracy out of the two options (measured by the strength of correlation between the predicted house prices and the actual house prices listed in the test part of the data) and, thus that combination of variables is chosen for our Random Forest Model. 
 
@@ -561,8 +547,8 @@ CharCategory <- c(names(Filter(is.character, rawHouseData_Test)), "MSSubClass")
 
 #### Removing and Imputing NAs
 
-```{r}
-# Dropping the GarageYrBlt column - imputing NAs with year = 0 might affect regression and other garage variables exist
+```{r  echo=T, results='hide', message=FALSE, warning=FALSE}
+# Dropping the GarageYrBlt column, as NAs refer to garage not built, imputing NAs with year = 0 might affect regression and other garage variables exist. Since other garage variables exist, dropping this column has no significant effect.
 rawHouseData_Test <- rawHouseData_Test[,!names(rawHouseData_Test)=="GarageYrBlt"]
 
 # Imputing NAs in MasVnrArea with 0
